@@ -1,36 +1,72 @@
 <template>
-  <div class="atMaster" style="padding: 10px">
-    <button @click="click">选择端口 {{ isOpen ? '（已开启）' : '（未开启）' }}</button>
-    <div v-show="isOpen" class="content">
-      <div style="padding: 10px 0">
-        <label>IMEI1: </label>
-        <input v-model="imei1" type="text" />
-        <button @click="readIMEI1()">读取</button>
-        <button @click="sendCommand(`AT+SPIMEI =0,&quot;${imei1}&quot;`)">写入</button>
-      </div>
-      <div style="padding: 10px 0">
-        <label>IMEI2: </label>
-        <input v-model="imei2" type="text" />
-        <button @click="readIMEI2()">读取</button>
-        <button @click="sendCommand(`AT+SPIMEI =1,&quot;${imei2}&quot;`)">写入</button>
-      </div>
-      <div>
-        <button @click="sendCommand('AT+RESET=1')">重启</button>
-      </div>
-      <BandSelector
-        :available-bands="list"
-        :is-connected="isOpen"
-        :initial-selected-bands="checked"
-        @read-bands="getBand"
-        @submit-bands="submit"
-      />
-      <SerialConsole
-        :output-data="dataR"
-        :is-connected="isOpen"
-        @send-command="sendCommand"
-        @clear-output="dataR = ''"
-      />
+  <div class="space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-lg font-bold text-ink">展锐</h1>
+      <button class="btn" :class="isOpen ? 'btn-danger' : 'btn-primary'" @click="click">
+        {{ isOpen ? '断开连接' : '选择端口' }}
+        <span v-if="isOpen" class="ml-1 inline-block size-2 rounded-full bg-green-500" />
+      </button>
     </div>
+
+    <template v-if="isOpen">
+      <section class="card">
+        <h2 class="card-title">IMEI 写号</h2>
+        <div class="space-y-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="field-label w-20">IMEI1:</label>
+            <input v-model="imei1" type="text" class="input min-w-0 flex-1 font-mono" />
+            <button class="btn" @click="readIMEI1()">读取</button>
+            <button
+              class="btn btn-primary"
+              @click="sendCommand(`AT+SPIMEI =0,&quot;${imei1}&quot;`)"
+            >
+              写入
+            </button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="field-label w-20">IMEI2:</label>
+            <input v-model="imei2" type="text" class="input min-w-0 flex-1 font-mono" />
+            <button class="btn" @click="readIMEI2()">读取</button>
+            <button
+              class="btn btn-primary"
+              @click="sendCommand(`AT+SPIMEI =1,&quot;${imei2}&quot;`)"
+            >
+              写入
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">设备</h2>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn" @click="sendCommand('AT+RESET=1')">重启</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">频段锁定</h2>
+        <BandSelector
+          :available-bands="list"
+          :is-connected="isOpen"
+          :initial-selected-bands="checked"
+          @read-bands="getBand"
+          @submit-bands="submit"
+        />
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">串口控制台</h2>
+        <SerialConsole
+          :output-data="dataR"
+          :is-connected="isOpen"
+          @send-command="sendCommand"
+          @clear-output="dataR = ''"
+        />
+      </section>
+    </template>
+
+    <p v-else class="text-center text-sm text-ink-soft/70">请连接设备以使用 AT 命令功能</p>
   </div>
 </template>
 
@@ -58,16 +94,6 @@ export default {
       imei1: '',
       imei2: '',
       bandStr: ''
-    }
-  },
-  watch: {
-    dataR() {
-      this.$nextTick(() => {
-        const textarea = document.getElementById('scroll_text')
-        if (textarea) {
-          textarea.scrollTop = textarea.scrollHeight
-        }
-      })
     }
   },
   created() {
@@ -263,47 +289,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-.atMaster {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-button {
-  margin: 5px 10px;
-  padding: 8px 16px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background-color: white;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-button:hover:not(:disabled) {
-  background-color: #f0f0f0;
-  border-color: #999;
-}
-
-input {
-  margin: 0 5px;
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-input:focus {
-  outline: none;
-  border-color: #1890ff;
-}
-
-.content {
-  margin-top: 20px;
-}
-
-label {
-  font-weight: bold;
-  margin-right: 5px;
-}
-</style>

@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Claude 品牌配色 */
+  --color-claude: #d97757;
+  --color-claude-hover: #c96442;
+  --color-claude-accent: #cc785c;
+  --color-ivory: #faf9f5;
+  --color-cream: #f0eee6;
+  --color-card: #ffffff;
+  --color-ink: #141413;
+  --color-ink-soft: #3d3929;
+}
+
+@layer components {
+  .btn {
+    @apply cursor-pointer rounded-lg border border-cream bg-card px-4 py-2 text-sm font-medium text-ink transition-colors duration-150 hover:border-claude-accent disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply border-claude bg-claude text-white hover:border-claude-hover hover:bg-claude-hover;
+  }
+
+  .btn-danger {
+    @apply border-red-200 bg-white text-red-600 hover:border-red-400 hover:bg-red-50;
+  }
+
+  .input {
+    @apply rounded-lg border border-cream bg-card px-3 py-2 text-sm text-ink outline-none transition-colors duration-150 focus:border-claude-accent focus:ring-2 focus:ring-claude/20;
+  }
+
+  .card {
+    @apply rounded-xl border border-cream bg-card p-4 shadow-sm sm:p-5;
+  }
+
+  .card-title {
+    @apply mb-3 border-b border-cream pb-2 text-sm font-semibold tracking-wide text-ink-soft;
+  }
+
+  .field-label {
+    @apply text-sm font-medium text-ink-soft;
+  }
+
+  .hint {
+    @apply text-xs text-ink-soft/60;
+  }
+}

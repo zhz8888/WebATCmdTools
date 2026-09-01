@@ -2,6 +2,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import VueDevTools from 'vite-plugin-vue-devtools'
+import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
@@ -15,6 +16,7 @@ export default defineConfig({
   plugins: [
     vue(),
     VueDevTools(),
+    tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
@@ -26,8 +28,8 @@ export default defineConfig({
         name: 'AT命令工具',
         short_name: 'AT工具',
         description: '基于Web Serial API的AT命令工具',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
+        theme_color: '#FAF9F5',
+        background_color: '#FAF9F5',
         display: 'standalone',
         icons: [
           {

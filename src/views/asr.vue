@@ -1,52 +1,99 @@
 <template>
-  <div class="atMaster" style="padding: 10px">
-    <button @click="click">选择端口 {{ isOpen ? '（已开启）' : '（未开启）' }}</button>
-    <div v-show="isOpen" class="content">
-      <div>
-        <button @click="sendCommand('AT*PROD=1')">工厂模式</button>
-        <button @click="sendCommand('AT*PROD=0')">退出工厂模式</button>
-      </div>
-      <label style="opacity: 0.5">需开启工厂模式才能写号，写入之前先删除</label>
-      <div style="padding: 10px 0">
-        <label>IMEI: </label>
-        <input v-model="imei" type="text" />
-        <button @click="sendCommand('AT+CGSN')">读取</button>
-        <button @click="sendCommand('AT*MRD_IMEI=D')">删除</button>
-        <button @click="sendCommand('AT*MRD_IMEI=W,0,01JAN1970,' + imei)">写入</button>
-      </div>
-      <div style="padding: 10px 0">
-        <label>SN: </label>
-        <input v-model="sn" type="text" placeholder="仅支持有SN号的设备" />
-        <button @click="sendCommand('AT*MRD_SN?')">读取</button>
-        <button @click="sendCommand('AT*MRD_SN=D')">删除</button>
-        <button @click="sendCommand('AT*MRD_SN=W,0,01JAN1970,' + sn)">写入</button>
-      </div>
-      <div style="padding: 10px 0">
-        <label>MAC: </label>
-        <input v-model="mac" type="text" />
-        <button @click="sendCommand('AT*MRD_WIFIID?')">读取</button>
-        <button @click="sendCommand('AT*MRD_WIFIID=D')">删除</button>
-        <button @click="sendCommand('AT*MRD_WIFIID=W,0,01JAN1970,' + mac)">写入</button>
-      </div>
-      <div>
-        <button @click="sendCommand('AT+SWSIM=0')">切到卡1</button>
-        <button @click="sendCommand('AT+SWSIM=1')">切到卡2</button>
-        <button @click="sendCommand('AT+RESET')">重启</button>
-      </div>
-      <BandSelector
-        :available-bands="list"
-        :is-connected="isOpen"
-        :initial-selected-bands="checked"
-        @read-bands="getBand"
-        @submit-bands="submit"
-      />
-      <SerialConsole
-        :output-data="dataR"
-        :is-connected="isOpen"
-        @send-command="sendCommand"
-        @clear-output="dataR = ''"
-      />
+  <div class="space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-lg font-bold text-ink">ASR</h1>
+      <button class="btn" :class="isOpen ? 'btn-danger' : 'btn-primary'" @click="click">
+        {{ isOpen ? '断开连接' : '选择端口' }}
+        <span v-if="isOpen" class="ml-1 inline-block size-2 rounded-full bg-green-500" />
+      </button>
     </div>
+
+    <template v-if="isOpen">
+      <section class="card">
+        <h2 class="card-title">工厂模式</h2>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn" @click="sendCommand('AT*PROD=1')">进入工厂模式</button>
+          <button class="btn" @click="sendCommand('AT*PROD=0')">退出工厂模式</button>
+        </div>
+        <p class="hint mt-2">需开启工厂模式才能写号，写入之前先删除</p>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">写号</h2>
+        <div class="space-y-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="field-label w-20">IMEI:</label>
+            <input v-model="imei" type="text" class="input min-w-0 flex-1 font-mono" />
+            <button class="btn" @click="sendCommand('AT+CGSN')">读取</button>
+            <button class="btn" @click="sendCommand('AT*MRD_IMEI=D')">删除</button>
+            <button
+              class="btn btn-primary"
+              @click="sendCommand('AT*MRD_IMEI=W,0,01JAN1970,' + imei)"
+            >
+              写入
+            </button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="field-label w-20">SN:</label>
+            <input
+              v-model="sn"
+              type="text"
+              placeholder="仅支持有SN号的设备"
+              class="input min-w-0 flex-1 font-mono"
+            />
+            <button class="btn" @click="sendCommand('AT*MRD_SN?')">读取</button>
+            <button class="btn" @click="sendCommand('AT*MRD_SN=D')">删除</button>
+            <button class="btn btn-primary" @click="sendCommand('AT*MRD_SN=W,0,01JAN1970,' + sn)">
+              写入
+            </button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="field-label w-20">MAC:</label>
+            <input v-model="mac" type="text" class="input min-w-0 flex-1 font-mono" />
+            <button class="btn" @click="sendCommand('AT*MRD_WIFIID?')">读取</button>
+            <button class="btn" @click="sendCommand('AT*MRD_WIFIID=D')">删除</button>
+            <button
+              class="btn btn-primary"
+              @click="sendCommand('AT*MRD_WIFIID=W,0,01JAN1970,' + mac)"
+            >
+              写入
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">SIM 与设备</h2>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn" @click="sendCommand('AT+SWSIM=0')">切到卡1</button>
+          <button class="btn" @click="sendCommand('AT+SWSIM=1')">切到卡2</button>
+          <button class="btn" @click="sendCommand('AT+RESET')">重启</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">频段锁定</h2>
+        <BandSelector
+          :available-bands="list"
+          :is-connected="isOpen"
+          :initial-selected-bands="checked"
+          @read-bands="getBand"
+          @submit-bands="submit"
+        />
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">串口控制台</h2>
+        <SerialConsole
+          :output-data="dataR"
+          :is-connected="isOpen"
+          @send-command="sendCommand"
+          @clear-output="dataR = ''"
+        />
+      </section>
+    </template>
+
+    <p v-else class="text-center text-sm text-ink-soft/70">请连接设备以使用 AT 命令功能</p>
   </div>
 </template>
 
@@ -73,16 +120,6 @@ export default {
       sn: '',
       mac: '',
       bandStr: ''
-    }
-  },
-  watch: {
-    dataR() {
-      this.$nextTick(() => {
-        const textarea = document.getElementById('scroll_text')
-        if (textarea) {
-          textarea.scrollTop = textarea.scrollHeight
-        }
-      })
     }
   },
   created() {
@@ -274,47 +311,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-.atMaster {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-button {
-  margin: 5px 10px;
-  padding: 8px 16px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background-color: white;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-button:hover:not(:disabled) {
-  background-color: #f0f0f0;
-  border-color: #999;
-}
-
-input {
-  margin: 0 5px;
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-input:focus {
-  outline: none;
-  border-color: #1890ff;
-}
-
-.content {
-  margin-top: 20px;
-}
-
-label {
-  font-weight: bold;
-  margin-right: 5px;
-}
-</style>

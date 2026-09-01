@@ -1,80 +1,131 @@
 <template>
-  <div class="atMaster" style="padding: 10px">
-    <button @click="click">选择端口 {{ isOpen ? '（已开启）' : '（未开启）' }}</button>
-    <div>
-      <label>ip: </label>
-      <input v-model="ip" type="text" />
-      <button @click="openADB">开启adb</button>
-      <button @click="closeADB">关闭adb</button>
-      <button @click="openADB2">开启adb2</button>
-      <button @click="closeADB2">关闭adb2</button>
-      <button @click="reboot">重启</button>
-      <button @click="reboot1869">重启2</button>
+  <div class="space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-lg font-bold text-ink">中兴微</h1>
+      <button class="btn" :class="isOpen ? 'btn-danger' : 'btn-primary'" @click="click">
+        {{ isOpen ? '断开连接' : '选择端口' }}
+        <span v-if="isOpen" class="ml-1 inline-block size-2 rounded-full bg-green-500" />
+      </button>
     </div>
-    <div v-show="isOpen" class="content">
-      <div style="padding: 10px 0">
-        <button @click="write('AT+ZMODE=1')">工厂模式</button>
-        <button @click="write('AT+ZMODE=0')">退出工厂模式</button>
-      </div>
-      <div style="padding: 10px 0">
-        <label>IMEI: </label>
-        <input v-model="imei" type="text" />
-        <button @click="write('AT+CGSN')">读取</button>
-        <button @click="write('AT+MODIMEI=' + imei)">写入</button>
-      </div>
-      <div style="padding: 10px 0">
-        <label>无线MAC: </label>
-        <input v-model="mac" type="text" />
-        <button @click="write('AT+MAC?')">读取</button>
-        <button @click="write('AT+MAC=' + mac)">写入</button>
-      </div>
-      <div style="padding: 10px 0">
-        <label>有线MAC: </label>
-        <input v-model="mac2" type="text" />
-        <button @click="write('AT+MAC2?')">读取</button>
-        <button @click="write('AT+MAC2=' + mac2)">写入</button>
-      </div>
-      <div style="display: flex; flex-wrap: wrap; align-items: center; padding: 10px 0">
-        <span
-          v-for="(item, i) in list"
-          :key="i"
-          style="display: flex; flex-wrap: wrap; align-items: center; padding: 0 5px"
-        >
-          <label for="option1">LTE B{{ item }}</label>
-          <input v-model.number="checked" type="checkbox" :value="item" /><br /><br />
-        </span>
-        <button @click="getBand">读取频段</button>
-        <button @click="submit">锁定频段</button>
-        <button @click="resetNetWork">重启网络</button>
-      </div>
 
-      <div style="padding: 10px 0">
-        <label>频点: </label>
-        <input v-model="lteCell.arfcn" style="width: 80px" type="text" />
-        <label style="margin-left: 20px">小区: </label>
-        <input v-model="lteCell.pci" style="width: 80px" type="text" />
-        <label style="margin-left: 20px">是否锁定: </label>
-        <input v-model.number="lteCell.isLock" type="checkbox" :value="true" />
-        <button @click="write('AT+ZLC?')">读取</button>
-        <button @click="write(`AT+ZLC=${lteCell.isLock ? 1 : 0},${lteCell.arfcn},${lteCell.pci}`)">
-          写入
-        </button>
-        <div>
-          <label style="opacity: 0.5"
-            >显示的仅为之前保存锁定小区的数据，并非是当前实际接入的小区</label
-          >
+    <template v-if="isOpen">
+      <section class="card">
+        <h2 class="card-title">ADB 与设备管理</h2>
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="field-label">ip:</label>
+          <input v-model="ip" type="text" class="input w-36 font-mono" />
+          <button class="btn" @click="openADB">开启adb</button>
+          <button class="btn" @click="closeADB">关闭adb</button>
+          <button class="btn" @click="openADB2">开启adb2</button>
+          <button class="btn" @click="closeADB2">关闭adb2</button>
+          <button class="btn" @click="reboot">重启</button>
+          <button class="btn" @click="reboot1869">重启2</button>
         </div>
-      </div>
-      <div>
-        <input v-model="dataW" type="text" placeholder="发送自定义AT指令" />
-        <button @click="write()">发送</button>
-        <button @click="write('AT+CGEQOSRDP=1')">限速检测</button>
-      </div>
-      <div class="right">
-        <textarea id="scroll_text" v-model="dataR" cols="30" rows="10" readonly="" />
-        <button @click="dataR = ''">清理</button>
-      </div>
-    </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">工厂模式</h2>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn" @click="write('AT+ZMODE=1')">进入工厂模式</button>
+          <button class="btn" @click="write('AT+ZMODE=0')">退出工厂模式</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">写号</h2>
+        <div class="space-y-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="field-label w-20">IMEI:</label>
+            <input v-model="imei" type="text" class="input min-w-0 flex-1 font-mono" />
+            <button class="btn" @click="write('AT+CGSN')">读取</button>
+            <button class="btn btn-primary" @click="write('AT+MODIMEI=' + imei)">写入</button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="field-label w-20">无线MAC:</label>
+            <input v-model="mac" type="text" class="input min-w-0 flex-1 font-mono" />
+            <button class="btn" @click="write('AT+MAC?')">读取</button>
+            <button class="btn btn-primary" @click="write('AT+MAC=' + mac)">写入</button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="field-label w-20">有线MAC:</label>
+            <input v-model="mac2" type="text" class="input min-w-0 flex-1 font-mono" />
+            <button class="btn" @click="write('AT+MAC2?')">读取</button>
+            <button class="btn btn-primary" @click="write('AT+MAC2=' + mac2)">写入</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">频段锁定</h2>
+        <div class="flex flex-wrap gap-1.5">
+          <label
+            v-for="item in list"
+            :key="item"
+            class="flex cursor-pointer items-center gap-1.5 rounded-lg border border-cream bg-ivory px-2.5 py-1.5 text-sm text-ink transition-colors duration-150 has-checked:border-claude-accent has-checked:bg-claude/10 hover:border-claude-accent"
+          >
+            <input v-model.number="checked" type="checkbox" :value="item" class="accent-claude" />
+            <span>LTE B{{ item }}</span>
+          </label>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button class="btn" @click="getBand">读取频段</button>
+          <button class="btn btn-primary" @click="submit">锁定频段</button>
+          <button class="btn" @click="resetNetWork">重启网络</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">小区锁定</h2>
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="field-label">频点:</label>
+          <input v-model="lteCell.arfcn" type="text" class="input w-24 font-mono" />
+          <label class="field-label">小区:</label>
+          <input v-model="lteCell.pci" type="text" class="input w-24 font-mono" />
+          <label class="flex cursor-pointer items-center gap-1.5 text-sm text-ink-soft">
+            <input
+              v-model.number="lteCell.isLock"
+              type="checkbox"
+              :value="true"
+              class="accent-claude"
+            />
+            <span>是否锁定</span>
+          </label>
+          <button class="btn" @click="write('AT+ZLC?')">读取</button>
+          <button
+            class="btn btn-primary"
+            @click="write(`AT+ZLC=${lteCell.isLock ? 1 : 0},${lteCell.arfcn},${lteCell.pci}`)"
+          >
+            写入
+          </button>
+        </div>
+        <p class="hint mt-2">显示的仅为之前保存锁定小区的数据，并非是当前实际接入的小区</p>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">串口控制台</h2>
+        <div class="mb-3 flex flex-wrap items-center gap-2">
+          <input
+            v-model="dataW"
+            type="text"
+            placeholder="发送自定义AT指令"
+            class="input min-w-0 flex-1 font-mono"
+            @keyup.enter="write()"
+          />
+          <button class="btn btn-primary" @click="write()">发送</button>
+          <button class="btn" @click="write('AT+CGEQOSRDP=1')">限速检测</button>
+        </div>
+        <textarea
+          id="scroll_text"
+          v-model="dataR"
+          cols="30"
+          rows="10"
+          readonly
+          class="w-full resize-y rounded-lg border border-cream bg-ink p-3 font-mono text-xs leading-5 text-claude/90 outline-none"
+        />
+      </section>
+    </template>
+
+    <p v-else class="text-center text-sm text-ink-soft/70">请连接设备以使用 AT 命令功能</p>
   </div>
 </template>
 
@@ -101,6 +152,16 @@ export default {
         arfcn: '',
         pci: ''
       }
+    }
+  },
+  watch: {
+    dataR() {
+      this.$nextTick(() => {
+        const textarea = document.getElementById('scroll_text')
+        if (textarea) {
+          textarea.scrollTop = textarea.scrollHeight
+        }
+      })
     }
   },
   created() {
@@ -313,62 +374,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-.atMaster {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-button {
-  margin: 5px 10px;
-  padding: 8px 16px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background-color: white;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-button:hover:not(:disabled) {
-  background-color: #f0f0f0;
-  border-color: #999;
-}
-
-input {
-  margin: 0 5px;
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-input:focus {
-  outline: none;
-  border-color: #1890ff;
-}
-
-.content {
-  margin-top: 20px;
-}
-
-.right {
-  margin-top: 20px;
-}
-
-textarea {
-  width: 100%;
-  min-height: 200px;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  resize: vertical;
-}
-
-label {
-  font-weight: bold;
-  margin-right: 5px;
-}
-</style>

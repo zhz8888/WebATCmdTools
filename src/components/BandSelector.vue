@@ -1,11 +1,11 @@
 <template>
-  <div class="band-selector">
-    <div class="band-controls">
+  <div>
+    <div class="mb-3 flex flex-wrap gap-2">
       <slot name="controls">
-        <button :disabled="!isConnected" class="control-button" @click="readBands">读取频段</button>
+        <button :disabled="!isConnected" class="btn" @click="readBands">读取频段</button>
         <button
           :disabled="!isConnected || !selectedBands.length"
-          class="control-button"
+          class="btn btn-primary"
           @click="submitBands"
         >
           锁定频段
@@ -13,18 +13,20 @@
       </slot>
     </div>
 
-    <div class="band-list">
-      <div v-for="band in availableBands" :key="band" class="band-item">
-        <label class="band-label">
-          <input v-model="selectedBands" type="checkbox" :value="band" class="band-checkbox" />
-          <span class="band-text">LTE B{{ band }}</span>
-        </label>
-      </div>
+    <div class="flex flex-wrap gap-1.5">
+      <label
+        v-for="band in availableBands"
+        :key="band"
+        class="flex cursor-pointer items-center gap-1.5 rounded-lg border border-cream bg-ivory px-2.5 py-1.5 text-sm text-ink transition-colors duration-150 has-checked:border-claude-accent has-checked:bg-claude/10 hover:border-claude-accent"
+      >
+        <input v-model="selectedBands" type="checkbox" :value="band" class="accent-claude" />
+        <span>LTE B{{ band }}</span>
+      </label>
     </div>
 
-    <div v-if="showTips" class="band-tips">
+    <div v-if="showTips" class="mt-2">
       <slot name="tips">
-        <p class="tip-text">显示的频段不一定支持，能成功锁定的频段才算是支持</p>
+        <p class="hint">显示的频段不一定支持，能成功锁定的频段才算是支持</p>
       </slot>
     </div>
   </div>
@@ -81,79 +83,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-.band-selector {
-  padding: 16px 0;
-}
-
-.band-controls {
-  margin-bottom: 16px;
-  display: flex;
-  gap: 8px;
-}
-
-.control-button {
-  padding: 8px 16px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background-color: white;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.control-button:hover:not(:disabled) {
-  background-color: #e6f7ff;
-  border-color: #1890ff;
-}
-
-.control-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.band-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.band-item {
-  display: flex;
-  align-items: center;
-}
-
-.band-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.band-label:hover {
-  background-color: #f0f0f0;
-}
-
-.band-checkbox {
-  margin-right: 6px;
-}
-
-.band-text {
-  font-size: 14px;
-  color: #333;
-}
-
-.band-tips {
-  margin-top: 8px;
-}
-
-.tip-text {
-  margin: 0;
-  font-size: 12px;
-  color: #666;
-  opacity: 0.8;
-}
-</style>
