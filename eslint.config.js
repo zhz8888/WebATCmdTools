@@ -7,6 +7,7 @@ export default [
   { ignores: ['dist/**', 'node_modules/**'] },
   js.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
+  // 关闭 vue 插件 preset 中与 prettier 冲突的格式类规则
   eslintConfigPrettier,
   {
     languageOptions: {
@@ -24,21 +25,12 @@ export default [
       'vue/no-use-v-if-with-v-for': 'error',
       'vue/require-v-for-key': 'error',
 
-      // JavaScript规则
+      // JavaScript规则（格式类规则一律交给 prettier）
       'no-unused-vars': 'error',
       'no-console': 'warn',
       'no-debugger': 'error',
-      'eqeqeq': 'error',
-      'curly': 'error',
-      'quotes': ['error', 'single'],
-      'semi': ['error', 'never'],
-      'comma-dangle': ['error', 'never'],
-      'arrow-spacing': 'error',
-      'space-before-blocks': 'error',
-      'keyword-spacing': 'error',
-      'space-infix-ops': 'error',
-      'eol-last': 'error',
-      'no-trailing-spaces': 'error'
+      eqeqeq: 'error',
+      curly: 'error'
     }
   },
   {
