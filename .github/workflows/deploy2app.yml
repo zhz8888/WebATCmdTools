@@ -17,10 +17,15 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       
+    - name: Install pnpm 🔧
+      uses: pnpm/action-setup@v4
+      with:
+        version: 11
+
     - name: Install and Build 🔧
       run: |
-        yarn
-        yarn build
+        pnpm install --frozen-lockfile
+        pnpm build
 
     - name: Deploy gh-pages 🚀
       uses: JamesIves/github-pages-deploy-action@4.1.7

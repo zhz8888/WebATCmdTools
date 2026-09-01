@@ -81,6 +81,7 @@ src/
 
 - **框架**: Vue 3 + Vue Router
 - **构建工具**: Vite
+- **包管理**: pnpm
 - **核心API**: Web Serial API
 - **部署**: GitHub Actions + GitHub Pages
 
@@ -88,16 +89,16 @@ src/
 
 ```bash
 # 安装依赖
-yarn install
+pnpm install
 
 # 启动开发服务器
-yarn dev
+pnpm dev
 
 # 构建生产版本
-yarn build
+pnpm build
 
 # 预览生产构建
-yarn preview
+pnpm preview
 ```
 
 ## 部署
