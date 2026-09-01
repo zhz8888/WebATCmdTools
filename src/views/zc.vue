@@ -1,164 +1,78 @@
 <template>
-  <div
-    class="atMaster"
-    style="padding: 10px"
-  >
-    <button @click="click">
-      选择端口 {{ isOpen ? '（已开启）' : '（未开启）' }}
-    </button>
+  <div class="atMaster" style="padding: 10px">
+    <button @click="click">选择端口 {{ isOpen ? '（已开启）' : '（未开启）' }}</button>
     <div>
       <label>ip: </label>
-      <input
-        v-model="ip"
-        type="text"
-      >
-      <button @click="openADB">
-        开启adb
-      </button>
-      <button @click="closeADB">
-        关闭adb
-      </button>
-      <button @click="openADB2">
-        开启adb2
-      </button>
-      <button @click="closeADB2">
-        关闭adb2
-      </button>
-      <button @click="reboot">
-        重启
-      </button>
-      <button @click="reboot1869">
-        重启2
-      </button>
+      <input v-model="ip" type="text" />
+      <button @click="openADB">开启adb</button>
+      <button @click="closeADB">关闭adb</button>
+      <button @click="openADB2">开启adb2</button>
+      <button @click="closeADB2">关闭adb2</button>
+      <button @click="reboot">重启</button>
+      <button @click="reboot1869">重启2</button>
     </div>
-    <div
-      v-show="isOpen"
-      class="content"
-    >
-      <div style="padding: 10px 0;">
-        <button @click="write('AT+ZMODE=1')">
-          工厂模式
-        </button>
-        <button @click="write('AT+ZMODE=0')">
-          退出工厂模式
-        </button>
+    <div v-show="isOpen" class="content">
+      <div style="padding: 10px 0">
+        <button @click="write('AT+ZMODE=1')">工厂模式</button>
+        <button @click="write('AT+ZMODE=0')">退出工厂模式</button>
       </div>
-      <div style="padding: 10px 0;">
+      <div style="padding: 10px 0">
         <label>IMEI: </label>
-        <input
-          v-model="imei"
-          type="text"
-        >
-        <button @click="write('AT+CGSN')">
-          读取
-        </button>
-        <button @click="write('AT+MODIMEI=' + imei)">
-          写入
-        </button>
+        <input v-model="imei" type="text" />
+        <button @click="write('AT+CGSN')">读取</button>
+        <button @click="write('AT+MODIMEI=' + imei)">写入</button>
       </div>
-      <div style="padding: 10px 0;">
+      <div style="padding: 10px 0">
         <label>无线MAC: </label>
-        <input
-          v-model="mac"
-          type="text"
-        >
-        <button @click="write('AT+MAC?')">
-          读取
-        </button>
-        <button @click="write('AT+MAC=' + mac)">
-          写入
-        </button>
+        <input v-model="mac" type="text" />
+        <button @click="write('AT+MAC?')">读取</button>
+        <button @click="write('AT+MAC=' + mac)">写入</button>
       </div>
-      <div style="padding: 10px 0;">
+      <div style="padding: 10px 0">
         <label>有线MAC: </label>
-        <input
-          v-model="mac2"
-          type="text"
-        >
-        <button @click="write('AT+MAC2?')">
-          读取
-        </button>
-        <button @click="write('AT+MAC2=' + mac2)">
-          写入
-        </button>
+        <input v-model="mac2" type="text" />
+        <button @click="write('AT+MAC2?')">读取</button>
+        <button @click="write('AT+MAC2=' + mac2)">写入</button>
       </div>
-      <div style="display: flex; flex-wrap: wrap; align-items: center; padding: 10px 0;">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; padding: 10px 0">
         <span
           v-for="(item, i) in list"
           :key="i"
-          style="display: flex; flex-wrap: wrap; align-items: center; padding: 0 5px;"
+          style="display: flex; flex-wrap: wrap; align-items: center; padding: 0 5px"
         >
           <label for="option1">LTE B{{ item }}</label>
-          <input
-            v-model.number="checked"
-            type="checkbox"
-            :value="item"
-          ><br><br>
+          <input v-model.number="checked" type="checkbox" :value="item" /><br /><br />
         </span>
-        <button @click="getBand">
-          读取频段
-        </button>
-        <button @click="submit">
-          锁定频段
-        </button>
-        <button @click="resetNetWork">
-          重启网络
-        </button>
+        <button @click="getBand">读取频段</button>
+        <button @click="submit">锁定频段</button>
+        <button @click="resetNetWork">重启网络</button>
       </div>
 
-      <div style="padding: 10px 0;">
+      <div style="padding: 10px 0">
         <label>频点: </label>
-        <input
-          v-model="lteCell.arfcn"
-          style="width: 80px;"
-          type="text"
-        >
-        <label style="margin-left: 20px;">小区: </label>
-        <input
-          v-model="lteCell.pci"
-          style="width: 80px;"
-          type="text"
-        >
-        <label style="margin-left: 20px;">是否锁定: </label>
-        <input
-          v-model.number="lteCell.isLock"
-          type="checkbox"
-          :value="true"
-        >
-        <button @click="write('AT+ZLC?')">
-          读取
-        </button>
+        <input v-model="lteCell.arfcn" style="width: 80px" type="text" />
+        <label style="margin-left: 20px">小区: </label>
+        <input v-model="lteCell.pci" style="width: 80px" type="text" />
+        <label style="margin-left: 20px">是否锁定: </label>
+        <input v-model.number="lteCell.isLock" type="checkbox" :value="true" />
+        <button @click="write('AT+ZLC?')">读取</button>
         <button @click="write(`AT+ZLC=${lteCell.isLock ? 1 : 0},${lteCell.arfcn},${lteCell.pci}`)">
           写入
         </button>
         <div>
-          <label style="opacity: 0.5;">显示的仅为之前保存锁定小区的数据，并非是当前实际接入的小区</label>
+          <label style="opacity: 0.5"
+            >显示的仅为之前保存锁定小区的数据，并非是当前实际接入的小区</label
+          >
         </div>
       </div>
       <div>
-        <input
-          v-model="dataW"
-          type="text"
-          placeholder="发送自定义AT指令"
-        >
-        <button @click="write()">
-          发送
-        </button>
-        <button @click="write('AT+CGEQOSRDP=1')">
-          限速检测
-        </button>
+        <input v-model="dataW" type="text" placeholder="发送自定义AT指令" />
+        <button @click="write()">发送</button>
+        <button @click="write('AT+CGEQOSRDP=1')">限速检测</button>
       </div>
       <div class="right">
-        <textarea
-          id="scroll_text"
-          v-model="dataR"
-          cols="30"
-          rows="10"
-          readonly=""
-        />
-        <button @click="dataR = ''">
-          清理
-        </button>
+        <textarea id="scroll_text" v-model="dataR" cols="30" rows="10" readonly="" />
+        <button @click="dataR = ''">清理</button>
       </div>
     </div>
   </div>
@@ -242,7 +156,9 @@ export default {
     },
 
     async sendCommand(command) {
-      if (!this.isOpen) {return}
+      if (!this.isOpen) {
+        return
+      }
 
       try {
         await this.serialManager.sendCommand(command)
@@ -359,11 +275,15 @@ export default {
 
     // ADB相关方法
     openADB() {
-      window.open(`http://${this.ip}/goform/goform_set_cmd_process?goformId=SET_DEVICE_MODE&debug_enable=1`)
+      window.open(
+        `http://${this.ip}/goform/goform_set_cmd_process?goformId=SET_DEVICE_MODE&debug_enable=1`
+      )
     },
 
     closeADB() {
-      window.open(`http://${this.ip}/goform/goform_set_cmd_process?goformId=SET_DEVICE_MODE&debug_enable=0`)
+      window.open(
+        `http://${this.ip}/goform/goform_set_cmd_process?goformId=SET_DEVICE_MODE&debug_enable=0`
+      )
     },
 
     openADB2() {

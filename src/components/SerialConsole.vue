@@ -17,20 +17,9 @@
         :placeholder="inputPlaceholder"
         class="command-input"
         @keyup.enter="sendCustomCommand"
-      >
-      <button
-        :disabled="!isConnected"
-        class="send-button"
-        @click="sendCustomCommand"
-      >
-        发送
-      </button>
-      <button
-        class="clear-button"
-        @click="clearOutput"
-      >
-        清理
-      </button>
+      />
+      <button :disabled="!isConnected" class="send-button" @click="sendCustomCommand">发送</button>
+      <button class="clear-button" @click="clearOutput">清理</button>
     </div>
 
     <div class="console-output">
@@ -81,7 +70,9 @@ export default {
   },
   methods: {
     sendCustomCommand() {
-      if (!this.customCommand.trim()) {return}
+      if (!this.customCommand.trim()) {
+        return
+      }
 
       this.$emit('send-command', this.customCommand.trim())
       this.customCommand = ''
@@ -135,7 +126,8 @@ export default {
   font-size: 14px;
 }
 
-.send-button, .clear-button {
+.send-button,
+.clear-button {
   padding: 8px 16px;
   border: 1px solid #ccc;
   border-radius: 4px;

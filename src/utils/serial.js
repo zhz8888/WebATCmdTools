@@ -67,7 +67,9 @@ export class SerialPortManager {
    * 关闭串口连接
    */
   async closePort() {
-    if (!this.isOpen) {return}
+    if (!this.isOpen) {
+      return
+    }
 
     try {
       if (this.reader) {
@@ -142,7 +144,7 @@ export class SerialPortManager {
   async sendAndWait(command, timeout = 1000) {
     await this.sendCommand(command)
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const timer = setTimeout(() => {
         resolve('')
       }, timeout)

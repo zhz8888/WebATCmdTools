@@ -1,83 +1,37 @@
 <template>
-  <div
-    class="atMaster"
-    style="padding: 10px"
-  >
-    <button @click="click">
-      选择端口 {{ isOpen ? '（已开启）' : '（未开启）' }}
-    </button>
-    <div
-      v-show="isOpen"
-      class="content"
-    >
+  <div class="atMaster" style="padding: 10px">
+    <button @click="click">选择端口 {{ isOpen ? '（已开启）' : '（未开启）' }}</button>
+    <div v-show="isOpen" class="content">
       <div>
-        <button @click="sendCommand('AT*PROD=1')">
-          工厂模式
-        </button>
-        <button @click="sendCommand('AT*PROD=0')">
-          退出工厂模式
-        </button>
+        <button @click="sendCommand('AT*PROD=1')">工厂模式</button>
+        <button @click="sendCommand('AT*PROD=0')">退出工厂模式</button>
       </div>
-      <label style="opacity: 0.5;">需开启工厂模式才能写号，写入之前先删除</label>
-      <div style="padding: 10px 0;">
+      <label style="opacity: 0.5">需开启工厂模式才能写号，写入之前先删除</label>
+      <div style="padding: 10px 0">
         <label>IMEI: </label>
-        <input
-          v-model="imei"
-          type="text"
-        >
-        <button @click="sendCommand('AT+CGSN')">
-          读取
-        </button>
-        <button @click="sendCommand('AT*MRD_IMEI=D')">
-          删除
-        </button>
-        <button @click="sendCommand('AT*MRD_IMEI=W,0,01JAN1970,' + imei)">
-          写入
-        </button>
+        <input v-model="imei" type="text" />
+        <button @click="sendCommand('AT+CGSN')">读取</button>
+        <button @click="sendCommand('AT*MRD_IMEI=D')">删除</button>
+        <button @click="sendCommand('AT*MRD_IMEI=W,0,01JAN1970,' + imei)">写入</button>
       </div>
-      <div style="padding: 10px 0;">
+      <div style="padding: 10px 0">
         <label>SN: </label>
-        <input
-          v-model="sn"
-          type="text"
-          placeholder="仅支持有SN号的设备"
-        >
-        <button @click="sendCommand('AT*MRD_SN?')">
-          读取
-        </button>
-        <button @click="sendCommand('AT*MRD_SN=D')">
-          删除
-        </button>
-        <button @click="sendCommand('AT*MRD_SN=W,0,01JAN1970,' + sn)">
-          写入
-        </button>
+        <input v-model="sn" type="text" placeholder="仅支持有SN号的设备" />
+        <button @click="sendCommand('AT*MRD_SN?')">读取</button>
+        <button @click="sendCommand('AT*MRD_SN=D')">删除</button>
+        <button @click="sendCommand('AT*MRD_SN=W,0,01JAN1970,' + sn)">写入</button>
       </div>
-      <div style="padding: 10px 0;">
+      <div style="padding: 10px 0">
         <label>MAC: </label>
-        <input
-          v-model="mac"
-          type="text"
-        >
-        <button @click="sendCommand('AT*MRD_WIFIID?')">
-          读取
-        </button>
-        <button @click="sendCommand('AT*MRD_WIFIID=D')">
-          删除
-        </button>
-        <button @click="sendCommand('AT*MRD_WIFIID=W,0,01JAN1970,' + mac)">
-          写入
-        </button>
+        <input v-model="mac" type="text" />
+        <button @click="sendCommand('AT*MRD_WIFIID?')">读取</button>
+        <button @click="sendCommand('AT*MRD_WIFIID=D')">删除</button>
+        <button @click="sendCommand('AT*MRD_WIFIID=W,0,01JAN1970,' + mac)">写入</button>
       </div>
       <div>
-        <button @click="sendCommand('AT+SWSIM=0')">
-          切到卡1
-        </button>
-        <button @click="sendCommand('AT+SWSIM=1')">
-          切到卡2
-        </button>
-        <button @click="sendCommand('AT+RESET')">
-          重启
-        </button>
+        <button @click="sendCommand('AT+SWSIM=0')">切到卡1</button>
+        <button @click="sendCommand('AT+SWSIM=1')">切到卡2</button>
+        <button @click="sendCommand('AT+RESET')">重启</button>
       </div>
       <BandSelector
         :available-bands="list"
@@ -182,7 +136,9 @@ export default {
     },
 
     async sendCommand(command) {
-      if (!this.isOpen) {return}
+      if (!this.isOpen) {
+        return
+      }
 
       try {
         await this.serialManager.sendCommand(command)
@@ -243,25 +199,43 @@ export default {
     // 与旧逻辑一致：bandH/bandL 两个位图字段合成已选频段
     parseLockedBand(bandStr) {
       let arr = bandStr.split(',')
-      if (arr.length < 5) {return []}
+      if (arr.length < 5) {
+        return []
+      }
       let bandH = parseInt(arr[3]) || 0
       let bandL = parseInt(arr[4]) || 0
       let checked = []
       // 高位图：bit5-bit8 对应 B38-B41
-      bandH.toString(2).split('').reverse().forEach((item, index) => {
-        if (item === '1') {
-          if (index === 5) {checked.push(38)}
-          if (index === 6) {checked.push(39)}
-          if (index === 7) {checked.push(40)}
-          if (index === 8) {checked.push(41)}
-        }
-      })
+      bandH
+        .toString(2)
+        .split('')
+        .reverse()
+        .forEach((item, index) => {
+          if (item === '1') {
+            if (index === 5) {
+              checked.push(38)
+            }
+            if (index === 6) {
+              checked.push(39)
+            }
+            if (index === 7) {
+              checked.push(40)
+            }
+            if (index === 8) {
+              checked.push(41)
+            }
+          }
+        })
       // 低位图：bit0-bit4 对应 B1-B5，仅保留列表内的频段
-      bandL.toString(2).split('').reverse().forEach((item, index) => {
-        if (item === '1' && [1, 3, 5, 8].includes(index + 1)) {
-          checked.push(index + 1)
-        }
-      })
+      bandL
+        .toString(2)
+        .split('')
+        .reverse()
+        .forEach((item, index) => {
+          if (item === '1' && [1, 3, 5, 8].includes(index + 1)) {
+            checked.push(index + 1)
+          }
+        })
       return checked
     },
 

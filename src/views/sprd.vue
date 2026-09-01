@@ -1,45 +1,21 @@
 <template>
-  <div
-    class="atMaster"
-    style="padding: 10px"
-  >
-    <button @click="click">
-      选择端口 {{ isOpen ? '（已开启）' : '（未开启）' }}
-    </button>
-    <div
-      v-show="isOpen"
-      class="content"
-    >
-      <div style="padding: 10px 0;">
+  <div class="atMaster" style="padding: 10px">
+    <button @click="click">选择端口 {{ isOpen ? '（已开启）' : '（未开启）' }}</button>
+    <div v-show="isOpen" class="content">
+      <div style="padding: 10px 0">
         <label>IMEI1: </label>
-        <input
-          v-model="imei1"
-          type="text"
-        >
-        <button @click="readIMEI1()">
-          读取
-        </button>
-        <button @click="sendCommand(`AT+SPIMEI =0,&quot;${imei1}&quot;`)">
-          写入
-        </button>
+        <input v-model="imei1" type="text" />
+        <button @click="readIMEI1()">读取</button>
+        <button @click="sendCommand(`AT+SPIMEI =0,&quot;${imei1}&quot;`)">写入</button>
       </div>
-      <div style="padding: 10px 0;">
+      <div style="padding: 10px 0">
         <label>IMEI2: </label>
-        <input
-          v-model="imei2"
-          type="text"
-        >
-        <button @click="readIMEI2()">
-          读取
-        </button>
-        <button @click="sendCommand(`AT+SPIMEI =1,&quot;${imei2}&quot;`)">
-          写入
-        </button>
+        <input v-model="imei2" type="text" />
+        <button @click="readIMEI2()">读取</button>
+        <button @click="sendCommand(`AT+SPIMEI =1,&quot;${imei2}&quot;`)">写入</button>
       </div>
       <div>
-        <button @click="sendCommand('AT+RESET=1')">
-          重启
-        </button>
+        <button @click="sendCommand('AT+RESET=1')">重启</button>
       </div>
       <BandSelector
         :available-bands="list"
@@ -160,7 +136,9 @@ export default {
     },
 
     async sendCommand(command) {
-      if (!this.isOpen) {return}
+      if (!this.isOpen) {
+        return
+      }
 
       try {
         await this.serialManager.sendCommand(command)
@@ -225,14 +203,26 @@ export default {
     parseLockedBand(bandH, bandL) {
       let checked = []
       // 高位图：bit5-bit8 对应 B38-B41
-      bandH.toString(2).split('').reverse().forEach((item, index) => {
-        if (item === '1') {
-          if (index === 5) {checked.push(38)}
-          if (index === 6) {checked.push(39)}
-          if (index === 7) {checked.push(40)}
-          if (index === 8) {checked.push(41)}
-        }
-      })
+      bandH
+        .toString(2)
+        .split('')
+        .reverse()
+        .forEach((item, index) => {
+          if (item === '1') {
+            if (index === 5) {
+              checked.push(38)
+            }
+            if (index === 6) {
+              checked.push(39)
+            }
+            if (index === 7) {
+              checked.push(40)
+            }
+            if (index === 8) {
+              checked.push(41)
+            }
+          }
+        })
       // 低位图：所有置位的频段
       checked.push(...this.getSupportedBand(bandL.toString(2)))
       return checked

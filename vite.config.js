@@ -4,7 +4,7 @@ import vue from '@vitejs/plugin-vue'
 import VueDevTools from 'vite-plugin-vue-devtools'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// https://vitejs.dev/config/
+// https://vite.dev/config/
 export default defineConfig({
   server: {
     host: '0.0.0.0',
@@ -58,11 +58,19 @@ export default defineConfig({
         drop_debugger: true
       }
     },
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          'vue-vendor': ['vue', 'vue-router'],
-          'utils': ['src/utils/serial.js']
+        codeSplitting: {
+          groups: [
+            {
+              name: 'vue-vendor',
+              test: /node_modules[\\/](vue|@vue|vue-router)[\\/]/
+            },
+            {
+              name: 'utils',
+              test: /src[\\/]utils[\\/]serial\.js/
+            }
+          ]
         }
       }
     },

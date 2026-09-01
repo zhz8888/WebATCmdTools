@@ -2,13 +2,7 @@
   <div class="band-selector">
     <div class="band-controls">
       <slot name="controls">
-        <button
-          :disabled="!isConnected"
-          class="control-button"
-          @click="readBands"
-        >
-          读取频段
-        </button>
+        <button :disabled="!isConnected" class="control-button" @click="readBands">读取频段</button>
         <button
           :disabled="!isConnected || !selectedBands.length"
           class="control-button"
@@ -20,31 +14,17 @@
     </div>
 
     <div class="band-list">
-      <div
-        v-for="band in availableBands"
-        :key="band"
-        class="band-item"
-      >
+      <div v-for="band in availableBands" :key="band" class="band-item">
         <label class="band-label">
-          <input
-            v-model="selectedBands"
-            type="checkbox"
-            :value="band"
-            class="band-checkbox"
-          >
+          <input v-model="selectedBands" type="checkbox" :value="band" class="band-checkbox" />
           <span class="band-text">LTE B{{ band }}</span>
         </label>
       </div>
     </div>
 
-    <div
-      v-if="showTips"
-      class="band-tips"
-    >
+    <div v-if="showTips" class="band-tips">
       <slot name="tips">
-        <p class="tip-text">
-          显示的频段不一定支持，能成功锁定的频段才算是支持
-        </p>
+        <p class="tip-text">显示的频段不一定支持，能成功锁定的频段才算是支持</p>
       </slot>
     </div>
   </div>

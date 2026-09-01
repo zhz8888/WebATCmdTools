@@ -9,5 +9,5 @@
   "endOfLine": "lf",
   "quoteProps": "as-needed",
   "jsxSingleQuote": true,
-  "vueIndentScriptAndStyle": true
+  "vueIndentScriptAndStyle": false
 }
