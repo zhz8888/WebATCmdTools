@@ -34,14 +34,6 @@ const routes = [
       title: 'AT命令工具 - 展锐'
     }
   },
-  {
-    path: '/test',
-    name: 'test',
-    component: () => import('../views/test.vue'),
-    meta: {
-      title: 'AT命令工具 - 测试'
-    }
-  },
   // 404页面处理
   {
     path: '/:pathMatch(.*)*',
