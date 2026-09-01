@@ -2,7 +2,7 @@
   <div class="space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-lg font-bold text-ink">中兴微</h1>
-      <button class="btn" :class="isOpen ? 'btn-danger' : 'btn-primary'" @click="click">
+      <button class="btn" :class="isOpen ? 'btn-danger' : 'btn-primary'" @click="togglePort">
         {{ isOpen ? '断开连接' : '选择端口' }}
         <span v-if="isOpen" class="ml-1 inline-block size-2 rounded-full bg-green-500" />
       </button>
@@ -69,7 +69,9 @@
         </div>
         <div class="mt-3 flex flex-wrap gap-2">
           <button class="btn" @click="getBand">读取频段</button>
-          <button class="btn btn-primary" @click="submit">锁定频段</button>
+          <button class="btn btn-primary" :disabled="!checked.length" @click="submit">
+            锁定频段
+          </button>
           <button class="btn" @click="resetNetWork">重启网络</button>
         </div>
       </section>
@@ -103,25 +105,18 @@
 
       <section class="card">
         <h2 class="card-title">串口控制台</h2>
-        <div class="mb-3 flex flex-wrap items-center gap-2">
-          <input
-            v-model="dataW"
-            type="text"
-            placeholder="发送自定义AT指令"
-            class="input min-w-0 flex-1 font-mono"
-            @keyup.enter="write()"
-          />
-          <button class="btn btn-primary" @click="write()">发送</button>
-          <button class="btn" @click="write('AT+CGEQOSRDP=1')">限速检测</button>
-        </div>
-        <textarea
-          id="scroll_text"
-          v-model="dataR"
-          cols="30"
-          rows="10"
-          readonly
-          class="w-full resize-y rounded-lg border border-cream bg-ink p-3 font-mono text-xs leading-5 text-claude/90 outline-none"
-        />
+        <SerialConsole
+          :output-data="dataR"
+          :is-connected="isOpen"
+          @send-command="write"
+          @clear-output="dataR = ''"
+        >
+          <template #controls>
+            <div class="mb-3 flex flex-wrap gap-2">
+              <button class="btn" @click="write('AT+CGEQOSRDP=1')">限速检测</button>
+            </div>
+          </template>
+        </SerialConsole>
       </section>
     </template>
 
@@ -130,17 +125,17 @@
 </template>
 
 <script>
-import { SerialPortManager } from '../utils/serial.js'
+import SerialConsole from '../components/SerialConsole.vue'
+import { createSerialPortMixin } from '../utils/serialPortMixin.js'
 
 export default {
   name: 'ZTEView',
+  components: {
+    SerialConsole
+  },
+  mixins: [createSerialPortMixin()],
   data() {
     return {
-      serialManager: null,
-      isOpen: false,
-      dataR: '',
-      dataW: '',
-      timer: null,
       list: [],
       checked: [],
       imei: '',
@@ -154,102 +149,14 @@ export default {
       }
     }
   },
-  watch: {
-    dataR() {
-      this.$nextTick(() => {
-        const textarea = document.getElementById('scroll_text')
-        if (textarea) {
-          textarea.scrollTop = textarea.scrollHeight
-        }
-      })
-    }
-  },
-  created() {
-    this.serialManager = new SerialPortManager()
-    this.serialManager.setDataHandler(this.handleSerialData)
-    this.serialManager.setErrorHandler(this.handleSerialError)
-
-    // 定时检查连接状态
-    this.timer = setInterval(() => {
-      this.isOpen = this.serialManager.isOpen
-    }, 100)
-  },
-  beforeUnmount() {
-    this.cleanup()
-  },
   methods: {
-    async click() {
-      if (!SerialPortManager.isSupported()) {
-        alert('该浏览器不支持，仅支持基于chromium内核的pc浏览器')
-        return
-      }
-
-      try {
-        if (this.isOpen) {
-          // 断开连接
-          await this.serialManager.closePort()
-        } else {
-          // 请求端口并连接
-          const portSelected = await this.serialManager.requestPort()
-          if (portSelected) {
-            const opened = await this.serialManager.openPort()
-            if (opened) {
-              // 连接成功后初始化数据
-              this.initializeData()
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Connection error:', error)
-        if (error.message && !error.message.includes('No port selected by the user')) {
-          alert(error.message)
-        }
-      }
-    },
-
     initializeData() {
-      // 延迟发送初始化命令
+      // 延迟发送初始化命令，响应由后台读取循环统一回调解析
       setTimeout(() => this.sendCommand('AT+CGSN'), 500)
       setTimeout(() => this.sendCommand('AT+MAC?'), 1000)
       setTimeout(() => this.sendCommand('AT+MAC2?'), 1500)
       setTimeout(() => this.getBand(), 2000)
       setTimeout(() => this.sendCommand('AT+ZLC?'), 2500)
-    },
-
-    async sendCommand(command) {
-      if (!this.isOpen) {
-        return
-      }
-
-      try {
-        await this.serialManager.sendCommand(command)
-        // 延迟读取响应
-        setTimeout(() => this.readResponse(), 300)
-      } catch (error) {
-        console.error('Send command error:', error)
-        this.handleSerialError(error)
-      }
-    },
-
-    async readResponse() {
-      try {
-        // readData 会触发 dataHandler，日志追加与解析都在其中完成，这里不要重复追加
-        await this.serialManager.readData()
-      } catch (error) {
-        console.error('Read response error:', error)
-      }
-    },
-
-    handleSerialData(data) {
-      this.dataR += data
-      this.parseResponse(data)
-    },
-
-    handleSerialError(error) {
-      console.error('Serial error:', error)
-      if (error.message && !error.message.includes('No port selected by the user')) {
-        alert(`串口错误: ${error.message}`)
-      }
     },
 
     parseResponse(str) {
@@ -361,15 +268,6 @@ export default {
 
     reboot1869() {
       window.open(`http://${this.ip}/reqproc/proc_post?isTest=false&goformId=REBOOT_DEVICE`)
-    },
-
-    cleanup() {
-      if (this.timer) {
-        clearInterval(this.timer)
-      }
-      if (this.serialManager) {
-        this.serialManager.closePort()
-      }
     }
   }
 }

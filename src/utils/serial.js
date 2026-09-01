@@ -10,6 +10,7 @@ export class SerialPortManager {
     this.isOpen = false
     this.dataHandler = null
     this.errorHandler = null
+    this.readLoopAbort = null
   }
 
   /**
@@ -54,6 +55,7 @@ export class SerialPortManager {
       this.reader = this.port.readable.getReader()
       this.writer = this.port.writable.getWriter()
       this.isOpen = true
+      this.startReadLoop()
       return true
     } catch (error) {
       if (this.errorHandler) {
@@ -72,11 +74,14 @@ export class SerialPortManager {
     }
 
     try {
-      if (this.reader) {
-        await this.reader.releaseLock()
+      if (this.readLoopAbort) {
+        this.readLoopAbort.aborted = true
+        // 中断挂起的 read()，使读取循环尽快退出
+        await this.reader.cancel()
+        this.readLoopAbort = null
       }
       if (this.writer) {
-        await this.writer.releaseLock()
+        this.writer.releaseLock()
       }
       if (this.port) {
         await this.port.close()
@@ -112,55 +117,40 @@ export class SerialPortManager {
   }
 
   /**
-   * 读取串口数据
+   * 启动后台持续读取循环
+   * 连接期间循环消费串口数据并回调 dataHandler，多帧响应不会被滞留
    */
-  async readData() {
-    if (!this.isOpen || !this.reader) {
-      throw new Error('Port is not open')
-    }
+  startReadLoop() {
+    this.readLoopAbort = { aborted: false }
 
-    try {
-      const { value, done } = await this.reader.read()
-      if (done) {
-        return null
-      }
-
-      const data = this.uint8ArrayToString(value)
-      if (this.dataHandler) {
-        this.dataHandler(data)
-      }
-      return data
-    } catch (error) {
-      if (this.errorHandler) {
-        this.errorHandler(error)
-      }
-      return null
-    }
-  }
-
-  /**
-   * 发送命令并等待响应
-   */
-  async sendAndWait(command, timeout = 1000) {
-    await this.sendCommand(command)
-
-    return new Promise(resolve => {
-      const timer = setTimeout(() => {
-        resolve('')
-      }, timeout)
-
-      const checkResponse = async () => {
-        const data = await this.readData()
-        if (data) {
-          clearTimeout(timer)
-          resolve(data)
-        } else {
-          setTimeout(checkResponse, 100)
+    const loop = async () => {
+      const abort = this.readLoopAbort
+      while (abort && !abort.aborted && this.isOpen && this.reader) {
+        try {
+          const { value, done } = await this.reader.read()
+          if (done) {
+            break
+          }
+          const data = this.uint8ArrayToString(value)
+          if (this.dataHandler) {
+            this.dataHandler(data)
+          }
+        } catch (error) {
+          if (abort.aborted) {
+            break
+          }
+          if (this.errorHandler) {
+            this.errorHandler(error)
+          }
+          break
         }
       }
+      if (this.readLoopAbort === abort) {
+        this.readLoopAbort = null
+      }
+    }
 
-      setTimeout(checkResponse, 100)
-    })
+    loop()
   }
 
   /**

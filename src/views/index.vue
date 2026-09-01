@@ -8,7 +8,7 @@
         v-for="platform in platforms"
         :key="platform.path"
         class="card cursor-pointer text-left transition-all duration-150 hover:-translate-y-0.5 hover:border-claude-accent hover:shadow-md"
-        @click="$router.push({ path: platform.path })"
+        @click="$router.push({ path: '/' + platform.path })"
       >
         <div class="text-base font-semibold text-ink">{{ platform.name }}</div>
         <div class="mt-1 text-xs text-ink-soft/70">{{ platform.desc }}</div>

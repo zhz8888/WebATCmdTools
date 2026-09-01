@@ -2,7 +2,7 @@
   <div class="space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-lg font-bold text-ink">展锐</h1>
-      <button class="btn" :class="isOpen ? 'btn-danger' : 'btn-primary'" @click="click">
+      <button class="btn" :class="isOpen ? 'btn-danger' : 'btn-primary'" @click="togglePort">
         {{ isOpen ? '断开连接' : '选择端口' }}
         <span v-if="isOpen" class="ml-1 inline-block size-2 rounded-full bg-green-500" />
       </button>
@@ -71,9 +71,9 @@
 </template>
 
 <script>
-import { SerialPortManager } from '../utils/serial.js'
 import BandSelector from '../components/BandSelector.vue'
 import SerialConsole from '../components/SerialConsole.vue'
+import { createSerialPortMixin } from '../utils/serialPortMixin.js'
 
 export default {
   name: 'SprdView',
@@ -81,78 +81,32 @@ export default {
     BandSelector,
     SerialConsole
   },
+  mixins: [createSerialPortMixin()],
   data() {
     return {
-      serialManager: null,
-      isOpen: false,
-      dataR: '',
-      timer: null,
       list: [1, 3, 5, 8, 38, 39, 40, 41],
       checked: [],
-      // 当前读取的是卡1还是卡2的IMEI（1 表示卡1，2 表示卡2）
-      activeSim: 0,
+      // 下一条 15 位数字行归属的卡号（由 AT+SPACTCARD 回显设置，1 卡1 / 2 卡2）
+      pendingSim: 0,
       imei1: '',
-      imei2: '',
-      bandStr: ''
+      imei2: ''
     }
   },
-  created() {
-    this.serialManager = new SerialPortManager()
-    this.serialManager.setDataHandler(this.handleSerialData)
-    this.serialManager.setErrorHandler(this.handleSerialError)
-
-    // 定时检查连接状态
-    this.timer = setInterval(() => {
-      this.isOpen = this.serialManager.isOpen
-    }, 100)
-  },
-  beforeUnmount() {
-    this.cleanup()
-  },
   methods: {
-    async click() {
-      if (!SerialPortManager.isSupported()) {
-        alert('该浏览器不支持，仅支持基于chromium内核的pc浏览器')
-        return
-      }
-
-      try {
-        if (this.isOpen) {
-          // 断开连接
-          await this.serialManager.closePort()
-        } else {
-          // 请求端口并连接
-          const portSelected = await this.serialManager.requestPort()
-          if (portSelected) {
-            const opened = await this.serialManager.openPort()
-            if (opened) {
-              this.initializeData()
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Connection error:', error)
-        if (error.message && !error.message.includes('No port selected by the user')) {
-          alert(error.message)
-        }
-      }
-    },
-
     initializeData() {
-      // 延迟发送初始化命令
+      // 延迟发送初始化命令，响应由后台读取循环统一回调解析
       setTimeout(() => this.readIMEI1(), 500)
       setTimeout(() => this.readIMEI2(), 1300)
       setTimeout(() => this.getBand(), 2100)
     },
 
+    // 双卡 IMEI 用 AT+SPACTCARD 切卡后查询，卡号由回显内容在 parseResponse 中归属
     readIMEI1() {
-      this.activeSim = 1
       this.sendCommand('AT+SPACTCARD=0')
       this.sendCommand('AT+SPIMEI?')
     },
 
     readIMEI2() {
-      this.activeSim = 2
       this.sendCommand('AT+SPACTCARD=1')
       this.sendCommand('AT+SPIMEI?')
     },
@@ -161,52 +115,24 @@ export default {
       this.sendCommand('AT+SPLBAND=0')
     },
 
-    async sendCommand(command) {
-      if (!this.isOpen) {
-        return
-      }
-
-      try {
-        await this.serialManager.sendCommand(command)
-        // 延迟读取响应
-        setTimeout(() => this.readResponse(), 300)
-      } catch (error) {
-        console.error('Send command error:', error)
-        this.handleSerialError(error)
-      }
-    },
-
-    async readResponse() {
-      try {
-        // readData 会触发 dataHandler，日志追加与解析都在其中完成
-        await this.serialManager.readData()
-      } catch (error) {
-        console.error('Read response error:', error)
-      }
-    },
-
-    handleSerialData(data) {
-      this.dataR += data
-      this.parseResponse(data)
-    },
-
-    handleSerialError(error) {
-      console.error('Serial error:', error)
-      if (error.message && !error.message.includes('No port selected by the user')) {
-        alert(`串口错误: ${error.message}`)
-      }
-    },
-
     parseResponse(str) {
-      // 解析双卡IMEI：15位数字行，前后都是空行时认为是IMEI
+      // 解析双卡IMEI：AT+SPACTCARD 的回显指明本批 IMEI 属于哪张卡，避免依赖响应到达时序
+      if (str.includes('AT+SPACTCARD=0')) {
+        this.pendingSim = 1
+      }
+      if (str.includes('AT+SPACTCARD=1')) {
+        this.pendingSim = 2
+      }
+
+      // IMEI：15位数字行，前后都是空行时认为是IMEI
       let arr = str.split('\r\n')
       if (arr.length >= 3) {
         arr.forEach((item, i) => {
           if (item.length === 15 && arr[i - 1] === '' && arr[i + 1] === '') {
-            if (this.activeSim === 1) {
+            if (this.pendingSim === 1) {
               this.imei1 = item
             }
-            if (this.activeSim === 2) {
+            if (this.pendingSim === 2) {
               this.imei2 = item
             }
           }
@@ -217,7 +143,6 @@ export default {
       if (str.includes('+SPLBAND: ')) {
         let arr = str.split('+SPLBAND: ')[1].split('\r\n')[0].split(',')
         if (arr.length >= 4) {
-          this.bandStr = arr.join(',')
           let bandH = parseInt(arr[1]) || 0
           let bandL = parseInt(arr[3]) || 0
           this.checked = this.parseLockedBand(bandH, bandL)
@@ -276,15 +201,6 @@ export default {
         }
       })
       this.sendCommand(`AT+SPLBAND=1,0,${bandH},0,${bandL},0`)
-    },
-
-    cleanup() {
-      if (this.timer) {
-        clearInterval(this.timer)
-      }
-      if (this.serialManager) {
-        this.serialManager.closePort()
-      }
     }
   }
 }

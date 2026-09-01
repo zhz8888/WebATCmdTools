@@ -2,7 +2,7 @@
   <div class="space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-lg font-bold text-ink">ASR</h1>
-      <button class="btn" :class="isOpen ? 'btn-danger' : 'btn-primary'" @click="click">
+      <button class="btn" :class="isOpen ? 'btn-danger' : 'btn-primary'" @click="togglePort">
         {{ isOpen ? '断开连接' : '选择端口' }}
         <span v-if="isOpen" class="ml-1 inline-block size-2 rounded-full bg-green-500" />
       </button>
@@ -98,9 +98,9 @@
 </template>
 
 <script>
-import { SerialPortManager } from '../utils/serial.js'
 import BandSelector from '../components/BandSelector.vue'
 import SerialConsole from '../components/SerialConsole.vue'
+import { createSerialPortMixin } from '../utils/serialPortMixin.js'
 
 export default {
   name: 'ASRView',
@@ -108,12 +108,9 @@ export default {
     BandSelector,
     SerialConsole
   },
+  mixins: [createSerialPortMixin()],
   data() {
     return {
-      serialManager: null,
-      isOpen: false,
-      dataR: '',
-      timer: null,
       list: [1, 3, 5, 8, 38, 39, 40, 41],
       checked: [],
       imei: '',
@@ -122,90 +119,13 @@ export default {
       bandStr: ''
     }
   },
-  created() {
-    this.serialManager = new SerialPortManager()
-    this.serialManager.setDataHandler(this.handleSerialData)
-    this.serialManager.setErrorHandler(this.handleSerialError)
-
-    // 定时检查连接状态
-    this.timer = setInterval(() => {
-      this.isOpen = this.serialManager.isOpen
-    }, 100)
-  },
-  beforeUnmount() {
-    this.cleanup()
-  },
   methods: {
-    async click() {
-      if (!SerialPortManager.isSupported()) {
-        alert('该浏览器不支持，仅支持基于chromium内核的pc浏览器')
-        return
-      }
-
-      try {
-        if (this.isOpen) {
-          // 断开连接
-          await this.serialManager.closePort()
-        } else {
-          // 请求端口并连接
-          const portSelected = await this.serialManager.requestPort()
-          if (portSelected) {
-            const opened = await this.serialManager.openPort()
-            if (opened) {
-              this.initializeData()
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Connection error:', error)
-        if (error.message && !error.message.includes('No port selected by the user')) {
-          alert(error.message)
-        }
-      }
-    },
-
     initializeData() {
-      // 延迟发送初始化命令
+      // 延迟发送初始化命令，响应由后台读取循环统一回调解析
       setTimeout(() => this.sendCommand('AT+CGSN'), 500)
       setTimeout(() => this.sendCommand('AT*MRD_SN?'), 1000)
       setTimeout(() => this.sendCommand('AT*MRD_WIFIID?'), 1500)
       setTimeout(() => this.getBand(), 2000)
-    },
-
-    async sendCommand(command) {
-      if (!this.isOpen) {
-        return
-      }
-
-      try {
-        await this.serialManager.sendCommand(command)
-        // 延迟读取响应
-        setTimeout(() => this.readResponse(), 500)
-      } catch (error) {
-        console.error('Send command error:', error)
-        this.handleSerialError(error)
-      }
-    },
-
-    async readResponse() {
-      try {
-        // readData 会触发 dataHandler，日志追加与解析都在其中完成
-        await this.serialManager.readData()
-      } catch (error) {
-        console.error('Read response error:', error)
-      }
-    },
-
-    handleSerialData(data) {
-      this.dataR += data
-      this.parseResponse(data)
-    },
-
-    handleSerialError(error) {
-      console.error('Serial error:', error)
-      if (error.message && !error.message.includes('No port selected by the user')) {
-        alert(`串口错误: ${error.message}`)
-      }
     },
 
     parseResponse(str) {
@@ -298,15 +218,6 @@ export default {
       bandArr[3] = bandH
       bandArr[4] = bandL
       this.sendCommand(`AT*BAND=${bandArr.join(',')}`)
-    },
-
-    cleanup() {
-      if (this.timer) {
-        clearInterval(this.timer)
-      }
-      if (this.serialManager) {
-        this.serialManager.closePort()
-      }
     }
   }
 }
