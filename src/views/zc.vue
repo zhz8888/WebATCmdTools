@@ -78,7 +78,7 @@
         <button @click="write('AT+MAC2?')">
           读取
         </button>
-        <button @click="write('AT+MAC2=' + imei)">
+        <button @click="write('AT+MAC2=' + mac2)">
           写入
         </button>
       </div>
