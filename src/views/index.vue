@@ -1,4 +1,5 @@
 <template>
+  <!-- 单卡片布局：上方工具简介，浅色横线分隔后为平台入口区 -->
   <div class="card text-center">
     <h1 class="text-2xl font-bold text-ink">AT命令工具</h1>
     <p class="mt-2 text-sm text-ink-soft/70">基于 Web Serial API 的浏览器串口调试工具</p>
@@ -21,6 +22,7 @@
 </template>
 
 <script>
+// 首页：展示工具简介与三个芯片平台的入口卡片
 export default {
   name: 'IndexView',
   data() {

@@ -28,18 +28,22 @@
 export default {
   name: 'SerialConsole',
   props: {
+    // 父组件传入的串口原始日志，只读渲染
     outputData: {
       type: String,
       default: ''
     },
+    // 串口是否已连接，未连接时发送按钮禁用
     isConnected: {
       type: Boolean,
       default: false
     },
+    // 命令输入框占位文案
     inputPlaceholder: {
       type: String,
       default: '发送自定义AT指令'
     },
+    // 日志区行数
     rows: {
       type: Number,
       default: 10
@@ -52,6 +56,7 @@ export default {
     }
   },
   watch: {
+    // 日志更新后滚动到底部，保持最新输出可见
     outputData() {
       this.$nextTick(() => {
         this.scrollToBottom()
@@ -59,6 +64,7 @@ export default {
     }
   },
   methods: {
+    // 发送输入框中的自定义 AT 命令并清空输入
     sendCustomCommand() {
       if (!this.customCommand.trim()) {
         return
@@ -67,9 +73,11 @@ export default {
       this.$emit('send-command', this.customCommand.trim())
       this.customCommand = ''
     },
+    // 请求父组件清空日志
     clearOutput() {
       this.$emit('clear-output')
     },
+    // 将日志区滚动到底部
     scrollToBottom() {
       const textarea = this.$refs.outputTextarea
       if (textarea) {

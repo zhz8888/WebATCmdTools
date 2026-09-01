@@ -1,5 +1,7 @@
 <template>
+  <!-- 中兴微平台页：单卡片布局，横线以下按功能分区（ADB/工厂模式/写号/频段/小区/控制台） -->
   <div class="card">
+    <!-- 标题行：返回首页 + 连接开关 -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         <button class="btn px-3" title="返回首页" @click="$router.push('/')">←</button>
@@ -155,6 +157,7 @@ export default {
     }
   },
   methods: {
+    // 连接成功后依次发送初始化查询命令，间隔发送避免响应拥塞
     initializeData() {
       // 延迟发送初始化命令，响应由后台读取循环统一回调解析
       setTimeout(() => this.sendCommand('AT+CGSN'), 500)
@@ -164,6 +167,7 @@ export default {
       setTimeout(() => this.sendCommand('AT+ZLC?'), 2500)
     },
 
+    // 解析串口响应：按响应前缀提取 IMEI、MAC、频段与小区锁定状态
     parseResponse(str) {
       // 解析IMEI
       if (str.includes('+CGSN: ')) {
@@ -199,6 +203,7 @@ export default {
       }
     },
 
+    // 将逗号分隔的位图字符串展开为支持的频段号列表（每字节 8 个频段）
     getSupportedBand(str) {
       return str.split(',').reduce((p, c, i) => {
         let arrStr = parseInt(c).toString(2)
@@ -211,10 +216,12 @@ export default {
       }, [])
     },
 
+    // 从支持的频段中过滤出当前已锁定的频段
     getLockedBand(str) {
       return this.getSupportedBand(str).filter(item => this.list.includes(item))
     },
 
+    // 查询支持的频段与当前锁定状态（两次查询间隔 200ms）
     getBand() {
       this.sendCommand('AT+ZLTEAMTBAND?')
       setTimeout(() => {
@@ -222,6 +229,7 @@ export default {
       }, 200)
     },
 
+    // 将勾选的频段编码为 8 组位图并发送锁定命令
     submit() {
       let arr = []
       for (var i = 0; i < 8; i++) {
@@ -239,6 +247,7 @@ export default {
       this.sendCommand('AT+ZLTEBAND=' + arr.join(','))
     },
 
+    // 重启网络：先离线（CFUN=4）再恢复（CFUN=1）
     resetNetWork() {
       this.sendCommand('AT+CFUN=4')
       setTimeout(() => {
@@ -246,7 +255,7 @@ export default {
       }, 5000)
     },
 
-    // ADB相关方法
+    // ADB相关方法：以下通过设备 Web 管理页面开关调试模式或重启设备
     openADB() {
       window.open(
         `http://${this.ip}/goform/goform_set_cmd_process?goformId=SET_DEVICE_MODE&debug_enable=1`

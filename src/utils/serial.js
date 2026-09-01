@@ -67,6 +67,7 @@ export class SerialPortManager {
 
   /**
    * 关闭串口连接
+   * 先中止后台读取循环，再释放锁并关闭端口
    */
   async closePort() {
     if (!this.isOpen) {
@@ -123,6 +124,7 @@ export class SerialPortManager {
   startReadLoop() {
     this.readLoopAbort = { aborted: false }
 
+    // 读取循环闭包：abort 标记置位或调用 cancel() 后退出
     const loop = async () => {
       const abort = this.readLoopAbort
       while (abort && !abort.aborted && this.isOpen && this.reader) {

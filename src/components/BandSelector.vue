@@ -33,21 +33,26 @@
 </template>
 
 <script>
+// 频段选择器：渲染可勾选的 LTE 频段列表，读取/锁定动作经事件交由父组件执行
 export default {
   name: 'BandSelector',
   props: {
+    // 可供勾选的频段号列表
     availableBands: {
       type: Array,
       default: () => [1, 3, 5, 8, 38, 39, 40, 41]
     },
+    // 串口是否已连接，未连接时读取/锁定按钮禁用
     isConnected: {
       type: Boolean,
       default: false
     },
+    // 是否显示频段支持范围提示文案
     showTips: {
       type: Boolean,
       default: true
     },
+    // 外部同步进来的已选中频段（如设备上报的锁定状态）
     initialSelectedBands: {
       type: Array,
       default: () => []
@@ -74,9 +79,11 @@ export default {
     }
   },
   methods: {
+    // 请求父组件读取设备的频段信息
     readBands() {
       this.$emit('read-bands')
     },
+    // 将当前勾选的频段交给父组件执行锁定
     submitBands() {
       this.$emit('submit-bands', this.selectedBands)
     }

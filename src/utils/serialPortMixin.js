@@ -37,6 +37,7 @@ export function createSerialPortMixin() {
       }
     },
     methods: {
+      // 切换串口连接：未连接时请求端口并打开，已连接时断开
       async togglePort() {
         if (!SerialPortManager.isSupported()) {
           alert('该浏览器不支持，仅支持基于chromium内核的pc浏览器')
@@ -63,6 +64,7 @@ export function createSerialPortMixin() {
         }
       },
 
+      // 向串口发送 AT 命令，发送失败时经 onSerialError 提示
       async sendCommand(command) {
         if (!this.isOpen) {
           return
@@ -76,6 +78,7 @@ export function createSerialPortMixin() {
         }
       },
 
+      // 串口数据回调：追加原始日志并交给页面解析响应
       onSerialData(data) {
         this.dataR += data
         if (this.parseResponse) {
@@ -83,6 +86,7 @@ export function createSerialPortMixin() {
         }
       },
 
+      // 串口错误处理：控制台记录并弹窗提示（忽略用户取消选择端口的情况）
       onSerialError(error) {
         console.error('Serial error:', error)
         if (error.message && !error.message.includes('No port selected by the user')) {

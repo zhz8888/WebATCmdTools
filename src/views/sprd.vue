@@ -1,5 +1,7 @@
 <template>
+  <!-- 展锐平台页：单卡片布局，横线以下按功能分区（双 IMEI/设备/频段/控制台） -->
   <div class="card">
+    <!-- 标题行：返回首页 + 连接开关 -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         <button class="btn px-3" title="返回首页" @click="$router.push('/')">←</button>
@@ -120,6 +122,7 @@ export default {
       this.sendCommand('AT+SPLBAND=0')
     },
 
+    // 解析串口响应：切卡回显归属 IMEI 卡号，再提取频段位图
     parseResponse(str) {
       // 解析双卡IMEI：AT+SPACTCARD 的回显指明本批 IMEI 属于哪张卡，避免依赖响应到达时序
       if (str.includes('AT+SPACTCARD=0')) {
@@ -194,6 +197,7 @@ export default {
       }, [])
     },
 
+    // 将勾选的频段编码为高低位图并发送锁定命令
     submit(selectedBands) {
       let bandH = 0
       let bandL = 0

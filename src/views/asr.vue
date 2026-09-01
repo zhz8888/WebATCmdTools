@@ -1,5 +1,7 @@
 <template>
+  <!-- ASR 平台页：单卡片布局，横线以下按功能分区（工厂模式/写号/SIM/频段/控制台） -->
   <div class="card">
+    <!-- 标题行：返回首页 + 连接开关 -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         <button class="btn px-3" title="返回首页" @click="$router.push('/')">←</button>
@@ -125,6 +127,7 @@ export default {
     }
   },
   methods: {
+    // 连接成功后依次发送初始化查询命令，间隔发送避免响应拥塞
     initializeData() {
       // 延迟发送初始化命令，响应由后台读取循环统一回调解析
       setTimeout(() => this.sendCommand('AT+CGSN'), 500)
@@ -133,6 +136,7 @@ export default {
       setTimeout(() => this.getBand(), 2000)
     },
 
+    // 解析串口响应：按响应前缀提取 IMEI、SN、MAC 与频段位图
     parseResponse(str) {
       // 解析IMEI
       if (str.includes('+CGSN: ')) {
@@ -201,10 +205,12 @@ export default {
       return checked
     },
 
+    // 查询设备支持的频段位图
     getBand() {
       this.sendCommand('AT*BAND?')
     },
 
+    // 将勾选的频段合成进当前位图并发送锁定命令（未查询到位图时使用全零基底）
     submit(selectedBands) {
       let bandH = 0
       let bandL = 0
