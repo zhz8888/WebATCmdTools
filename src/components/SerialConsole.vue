@@ -36,7 +36,7 @@
     <div class="console-output">
       <textarea
         ref="outputTextarea"
-        v-model="outputData"
+        :value="outputData"
         readonly
         :rows="rows"
         class="output-textarea"

@@ -256,10 +256,8 @@ export default {
 
     async readResponse() {
       try {
-        const data = await this.serialManager.readData()
-        if (data) {
-          this.dataR += data
-        }
+        // readData 会触发 dataHandler，日志追加与解析都在其中完成，这里不要重复追加
+        await this.serialManager.readData()
       } catch (error) {
         console.error('Read response error:', error)
       }
