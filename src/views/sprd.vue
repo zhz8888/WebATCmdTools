@@ -19,7 +19,7 @@
         <button @click="readIMEI1()">
           读取
         </button>
-        <button @click="write(`AT+SPIMEI =0,&quot;${imei1}&quot;`)">
+        <button @click="sendCommand(`AT+SPIMEI =0,&quot;${imei1}&quot;`)">
           写入
         </button>
       </div>
@@ -32,241 +32,226 @@
         <button @click="readIMEI2()">
           读取
         </button>
-        <button @click="write(`AT+SPIMEI =1,&quot;${imei2}&quot;`)">
+        <button @click="sendCommand(`AT+SPIMEI =1,&quot;${imei2}&quot;`)">
           写入
         </button>
       </div>
       <div>
-        <button @click="write('AT+RESET=1')">
+        <button @click="sendCommand('AT+RESET=1')">
           重启
         </button>
       </div>
-      <!-- <van-checkbox-group v-model="checked" direction="horizontal">
-        <van-checkbox :name="item" v-for="(item, i) in list" :key="i">LTE B{{ item }}</van-checkbox>
-      </van-checkbox-group> -->
-      <div style="display: flex; flex-wrap: wrap; align-items: center; padding: 10px 0;">
-        <span
-          v-for="(item, i) in list"
-          :key="i"
-          style="display: flex; flex-wrap: wrap; align-items: center; padding: 0 5px;"
-        >
-          <label for="option1">LTE B{{ item }}</label>
-          <input
-            v-model.number="checked"
-            type="checkbox"
-            :value="item"
-          ><br><br>
-        </span>
-        <button @click="getBand">
-          读取频段
-        </button>
-        <button @click="submit">
-          锁定频段
-        </button>
-      </div>
-
-      <!-- <van-button type="primary" :disabled="!isOpen || !checked.length">锁定频段</van-button> -->
-      <div>
-        <input
-          v-model="dataW"
-          type="text"
-          placeholder="发送自定义AT指令"
-        >
-        <button @click="write()">
-          发送
-        </button>
-      </div>
-      <div class="right">
-        <textarea
-          id="scroll_text"
-          v-model="dataR"
-          cols="30"
-          rows="10"
-          readonly=""
-        />
-        <button @click="dataR = ''">
-          清理
-        </button>
-      </div>
+      <BandSelector
+        :available-bands="list"
+        :is-connected="isOpen"
+        :initial-selected-bands="checked"
+        @read-bands="getBand"
+        @submit-bands="submit"
+      />
+      <SerialConsole
+        :output-data="dataR"
+        :is-connected="isOpen"
+        @send-command="sendCommand"
+        @clear-output="dataR = ''"
+      />
     </div>
   </div>
 </template>
 
 <script>
+import { SerialPortManager } from '../utils/serial.js'
+import BandSelector from '../components/BandSelector.vue'
+import SerialConsole from '../components/SerialConsole.vue'
+
 export default {
-  mixins: [],
+  name: 'SprdView',
+  components: {
+    BandSelector,
+    SerialConsole
+  },
   data() {
     return {
-      port: {},
-      reader: {},
+      serialManager: null,
       isOpen: false,
       dataR: '',
-      dataW: '',
       timer: null,
-      reader: {},
-      writer: {},
       list: [1, 3, 5, 8, 38, 39, 40, 41],
       checked: [],
-      imei: '',
+      // 当前读取的是卡1还是卡2的IMEI（1 表示卡1，2 表示卡2）
+      activeSim: 0,
       imei1: '',
       imei2: '',
-      sn: '',
-      mac: '',
-      bandStr: '',
-      ip: '192.168.0.1'
+      bandStr: ''
     }
-  },
-  computed: {
   },
   watch: {
     dataR() {
       this.$nextTick(() => {
         const textarea = document.getElementById('scroll_text')
-        textarea.scrollTop = textarea.scrollHeight
+        if (textarea) {
+          textarea.scrollTop = textarea.scrollHeight
+        }
       })
     }
   },
   created() {
-    window.that = this
+    this.serialManager = new SerialPortManager()
+    this.serialManager.setDataHandler(this.handleSerialData)
+    this.serialManager.setErrorHandler(this.handleSerialError)
+
+    // 定时检查连接状态
     this.timer = setInterval(() => {
-      this.isOpen = !!this.port.readable
+      this.isOpen = this.serialManager.isOpen
     }, 100)
   },
-  async unmounted() {
-    clearInterval(this.timer)
-    try {
-      this.reader.releaseLock()
-      this.writer.releaseLock()
-      await this.port.close()
-      this.reader = {}
-    } catch (error) { }
+  beforeUnmount() {
+    this.cleanup()
   },
   methods: {
     async click() {
-      if (!navigator.serial) {
+      if (!SerialPortManager.isSupported()) {
         alert('该浏览器不支持，仅支持基于chromium内核的pc浏览器')
         return
       }
-      try {
-        if (this.port.getInfo && this.port.readable) {
-          try {
-            this.reader.releaseLock()
-            this.writer.releaseLock()
-          } catch (error) { }
-          await this.port.close()
-          this.reader = {}
-        } else {
-          const port = await navigator.serial.requestPort()
-          this.port = port
-          if (!this.port.readable) {
-            // 打开串口
-            await port.open({
-              dataBits: 8, // 数据位
-              stopBits: 1, // 停止位
-              parity: 'none', // 奇偶校验
-              baudRate: 9600 // 波特率
-            })
-            this.reader = this.port.readable.getReader()
-            this.writer = this.port.writable.getWriter()
-            this.readIMEI1()
-            setTimeout(() => { this.readIMEI2() }, 800)
-            setTimeout(() => { this.getBand() }, 800)
 
+      try {
+        if (this.isOpen) {
+          // 断开连接
+          await this.serialManager.closePort()
+        } else {
+          // 请求端口并连接
+          const portSelected = await this.serialManager.requestPort()
+          if (portSelected) {
+            const opened = await this.serialManager.openPort()
+            if (opened) {
+              this.initializeData()
+            }
           }
         }
       } catch (error) {
-        console.log('error', error)
-        error.message && !error.message.includes('No port selected by the user') && alert(error.message)
+        console.error('Connection error:', error)
+        if (error.message && !error.message.includes('No port selected by the user')) {
+          alert(error.message)
+        }
       }
+    },
 
+    initializeData() {
+      // 延迟发送初始化命令
+      setTimeout(() => this.readIMEI1(), 500)
+      setTimeout(() => this.readIMEI2(), 1300)
+      setTimeout(() => this.getBand(), 2100)
     },
-    getBand() {
-      this.write('AT+SPLBAND=0')
-    },
-    async read() {
-      const reader = this.reader
-      // 监听来自串口的数据
-      const { value, done } = await reader.read()
-      let str = Uint8ArrayToString(value)
-      console.log('接收', str)
-      this.dataR += str
-      this.dataHandler(str)
-    },
+
     readIMEI1() {
-      this.imei = 1
-      this.write('AT+SPACTCARD=0')
-      this.write('AT+SPIMEI?')
+      this.activeSim = 1
+      this.sendCommand('AT+SPACTCARD=0')
+      this.sendCommand('AT+SPIMEI?')
     },
+
     readIMEI2() {
-      this.imei = 2
-      this.write('AT+SPACTCARD=1')
-      this.write('AT+SPIMEI?')
+      this.activeSim = 2
+      this.sendCommand('AT+SPACTCARD=1')
+      this.sendCommand('AT+SPIMEI?')
     },
-    async write(atStr) {
-      const writer = this.writer
-      let str = (atStr || this.dataW) + '\r\n'
-      // this.dataR += str
-      // console.log('发送', str)
-      let arr = stringToUint8Array(str)
-      await writer.write(arr)
-      setTimeout(() => {
-        this.read()
-      }, 300)
+
+    getBand() {
+      this.sendCommand('AT+SPLBAND=0')
     },
-    dataHandler(str) {
+
+    async sendCommand(command) {
+      if (!this.isOpen) {return}
+
+      try {
+        await this.serialManager.sendCommand(command)
+        // 延迟读取响应
+        setTimeout(() => this.readResponse(), 300)
+      } catch (error) {
+        console.error('Send command error:', error)
+        this.handleSerialError(error)
+      }
+    },
+
+    async readResponse() {
+      try {
+        // readData 会触发 dataHandler，日志追加与解析都在其中完成
+        await this.serialManager.readData()
+      } catch (error) {
+        console.error('Read response error:', error)
+      }
+    },
+
+    handleSerialData(data) {
+      this.dataR += data
+      this.parseResponse(data)
+    },
+
+    handleSerialError(error) {
+      console.error('Serial error:', error)
+      if (error.message && !error.message.includes('No port selected by the user')) {
+        alert(`串口错误: ${error.message}`)
+      }
+    },
+
+    parseResponse(str) {
+      // 解析双卡IMEI：15位数字行，前后都是空行时认为是IMEI
       let arr = str.split('\r\n')
       if (arr.length >= 3) {
         arr.forEach((item, i) => {
-          console.log(arr)
           if (item.length === 15 && arr[i - 1] === '' && arr[i + 1] === '') {
-            if (this.imei === 1) {
+            if (this.activeSim === 1) {
               this.imei1 = item
             }
-            if (this.imei === 2) {
+            if (this.activeSim === 2) {
               this.imei2 = item
             }
           }
         })
       }
-      let bandStr = '+SPLBAND: '
-      if (str.includes(bandStr)) {
-        let arr = str.split(',')
-        let bandH = arr[1].toString(2)
-        let bandL = arr[3].toString(2)
-        let checked = []
-        checked.push(...this.getSupportedBand(bandL.toString(2)))
-        parseInt(bandH).toString(2).split('').reverse().forEach((item, index) => {
-          if (item === '1') {
-            if (index === 5) {
-              checked.push(38)
-            }
-            if (index === 6) {
-              checked.push(39)
-            }
-            if (index === 7) {
-              checked.push(40)
-            }
-            if (index === 8) {
-              checked.push(41)
-            }
-          }
-        })
-        this.checked = checked
-      }
-      bandStr = '*MRD_SN:'
-      if (str.includes(bandStr)) {
-        this.sn = str.split(bandStr)[1].split('\r\n')[0]
-      }
-      bandStr = '*MRD_WIFIID: '
-      if (str.includes(bandStr)) {
-        this.mac = str.split(bandStr)[1].split('\r\n')[0].replaceAll(':', '')
+
+      // 解析频段信息
+      if (str.includes('+SPLBAND: ')) {
+        let arr = str.split('+SPLBAND: ')[1].split('\r\n')[0].split(',')
+        if (arr.length >= 4) {
+          this.bandStr = arr.join(',')
+          let bandH = parseInt(arr[1]) || 0
+          let bandL = parseInt(arr[3]) || 0
+          this.checked = this.parseLockedBand(bandH, bandL)
+        }
       }
     },
-    submit() {
-      let arr = []
+
+    // 与旧逻辑一致：bandH/bandL 两个位图字段合成已选频段
+    parseLockedBand(bandH, bandL) {
+      let checked = []
+      // 高位图：bit5-bit8 对应 B38-B41
+      bandH.toString(2).split('').reverse().forEach((item, index) => {
+        if (item === '1') {
+          if (index === 5) {checked.push(38)}
+          if (index === 6) {checked.push(39)}
+          if (index === 7) {checked.push(40)}
+          if (index === 8) {checked.push(41)}
+        }
+      })
+      // 低位图：所有置位的频段
+      checked.push(...this.getSupportedBand(bandL.toString(2)))
+      return checked
+    },
+
+    getSupportedBand(binStr) {
+      // 与旧逻辑一致：二进制位倒序后按位置推算频段号
+      return binStr.split('').reduce((p, c, i) => {
+        if (c === '1') {
+          p.push(i + 1)
+        }
+        return p
+      }, [])
+    },
+
+    submit(selectedBands) {
       let bandH = 0
       let bandL = 0
-      this.checked.forEach(item => {
+      selectedBands.forEach(item => {
         if (item <= 20) {
           bandL += Math.pow(2, item - 1)
         }
@@ -274,49 +259,61 @@ export default {
           bandH += Math.pow(2, item - 33)
         }
       })
-      let bandArr = this.bandStr.split(',')
-      bandArr[3] = bandH
-      bandArr[4] = bandL
-      let bandStr = `AT+SPLBAND=1,0,${bandH},0,${bandL},0`
-      this.write(bandStr)
+      this.sendCommand(`AT+SPLBAND=1,0,${bandH},0,${bandL},0`)
     },
-    getSupportedBand(str) {
-      // console.log(str)
-      return str.split(',').reduce((p, c, i) => {
-        let arrStr = parseInt(c).toString(2)
-        for (var j = 0; j < arrStr.length; j++) {
-          if (parseInt(arrStr[arrStr.length - j - 1])) {
-            p.push(i * 8 + j + 1)
-          }
-        }
-        return p
-      }, [])
+
+    cleanup() {
+      if (this.timer) {
+        clearInterval(this.timer)
+      }
+      if (this.serialManager) {
+        this.serialManager.closePort()
+      }
     }
   }
-}
-function Uint8ArrayToString(fileData) {
-  var dataString = ''
-  for (var i = 0; i < fileData.length; i++) {
-    dataString += String.fromCharCode(fileData[i])
-  }
-
-  return dataString
-
-}
-
-function stringToUint8Array(str) {
-  var arr = []
-  for (var i = 0; i < str.length; i++) {
-    arr.push(str.charCodeAt(i))
-  }
-
-  var tmpUint8Array = new Uint8Array(arr)
-  return tmpUint8Array
 }
 </script>
 
 <style scoped>
+.atMaster {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
 button {
   margin: 5px 10px;
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+button:hover:not(:disabled) {
+  background-color: #f0f0f0;
+  border-color: #999;
+}
+
+input {
+  margin: 0 5px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+input:focus {
+  outline: none;
+  border-color: #1890ff;
+}
+
+.content {
+  margin-top: 20px;
+}
+
+label {
+  font-weight: bold;
+  margin-right: 5px;
 }
 </style>

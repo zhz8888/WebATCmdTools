@@ -11,10 +11,10 @@
       class="content"
     >
       <div>
-        <button @click="write('AT*PROD=1')">
+        <button @click="sendCommand('AT*PROD=1')">
           工厂模式
         </button>
-        <button @click="write('AT*PROD=0')">
+        <button @click="sendCommand('AT*PROD=0')">
           退出工厂模式
         </button>
       </div>
@@ -25,13 +25,13 @@
           v-model="imei"
           type="text"
         >
-        <button @click="write('AT+CGSN')">
+        <button @click="sendCommand('AT+CGSN')">
           读取
         </button>
-        <button @click="write('AT*MRD_IMEI=D')">
+        <button @click="sendCommand('AT*MRD_IMEI=D')">
           删除
         </button>
-        <button @click="write('AT*MRD_IMEI=W,0,01JAN1970,' + imei)">
+        <button @click="sendCommand('AT*MRD_IMEI=W,0,01JAN1970,' + imei)">
           写入
         </button>
       </div>
@@ -42,13 +42,13 @@
           type="text"
           placeholder="仅支持有SN号的设备"
         >
-        <button @click="write('AT*MRD_SN?')">
+        <button @click="sendCommand('AT*MRD_SN?')">
           读取
         </button>
-        <button @click="write('AT*MRD_SN=D')">
+        <button @click="sendCommand('AT*MRD_SN=D')">
           删除
         </button>
-        <button @click="write('AT*MRD_SN=W,0,01JAN1970,' + sn)">
+        <button @click="sendCommand('AT*MRD_SN=W,0,01JAN1970,' + sn)">
           写入
         </button>
       </div>
@@ -58,242 +58,221 @@
           v-model="mac"
           type="text"
         >
-        <button @click="write('AT*MRD_WIFIID?')">
+        <button @click="sendCommand('AT*MRD_WIFIID?')">
           读取
         </button>
-        <button @click="write('AT*MRD_WIFIID=D')">
+        <button @click="sendCommand('AT*MRD_WIFIID=D')">
           删除
         </button>
-        <button @click="write('AT*MRD_WIFIID=W,0,01JAN1970,' + mac)">
+        <button @click="sendCommand('AT*MRD_WIFIID=W,0,01JAN1970,' + mac)">
           写入
         </button>
       </div>
       <div>
-        <button @click="write('AT+SWSIM=0')">
+        <button @click="sendCommand('AT+SWSIM=0')">
           切到卡1
         </button>
-        <button @click="write('AT+SWSIM=1')">
+        <button @click="sendCommand('AT+SWSIM=1')">
           切到卡2
         </button>
-        <button @click="write('AT+RESET')">
+        <button @click="sendCommand('AT+RESET')">
           重启
         </button>
       </div>
-      <!-- <van-checkbox-group v-model="checked" direction="horizontal">
-        <van-checkbox :name="item" v-for="(item, i) in list" :key="i">LTE B{{ item }}</van-checkbox>
-      </van-checkbox-group> -->
-      <div style="display: flex; flex-wrap: wrap; align-items: center; padding: 10px 0;">
-        <span
-          v-for="(item, i) in list"
-          :key="i"
-          style="display: flex; flex-wrap: wrap; align-items: center; padding: 0 5px;"
-        >
-          <label for="option1">LTE B{{ item }}</label>
-          <input
-            v-model.number="checked"
-            type="checkbox"
-            :value="item"
-          ><br><br>
-        </span>
-        <button @click="getBand">
-          读取频段
-        </button>
-        <button @click="submit">
-          锁定频段
-        </button>
-        <span style="opacity: 0.5;">显示的频段不一定支持，能成功锁定的频段才算是支持</span>
-      </div>
-
-      <!-- <van-button type="primary" :disabled="!isOpen || !checked.length">锁定频段</van-button> -->
-      <div>
-        <input
-          v-model="dataW"
-          type="text"
-          placeholder="发送自定义AT指令"
-        >
-        <button @click="write()">
-          发送
-        </button>
-      </div>
-      <div class="right">
-        <textarea
-          id="scroll_text"
-          v-model="dataR"
-          cols="30"
-          rows="10"
-          readonly=""
-        />
-        <button @click="dataR = ''">
-          清理
-        </button>
-      </div>
+      <BandSelector
+        :available-bands="list"
+        :is-connected="isOpen"
+        :initial-selected-bands="checked"
+        @read-bands="getBand"
+        @submit-bands="submit"
+      />
+      <SerialConsole
+        :output-data="dataR"
+        :is-connected="isOpen"
+        @send-command="sendCommand"
+        @clear-output="dataR = ''"
+      />
     </div>
   </div>
 </template>
 
 <script>
+import { SerialPortManager } from '../utils/serial.js'
+import BandSelector from '../components/BandSelector.vue'
+import SerialConsole from '../components/SerialConsole.vue'
+
 export default {
-  mixins: [],
+  name: 'ASRView',
+  components: {
+    BandSelector,
+    SerialConsole
+  },
   data() {
     return {
-      port: {},
-      reader: {},
+      serialManager: null,
       isOpen: false,
       dataR: '',
-      dataW: '',
       timer: null,
-      reader: {},
-      writer: {},
       list: [1, 3, 5, 8, 38, 39, 40, 41],
       checked: [],
       imei: '',
       sn: '',
       mac: '',
-      bandStr: '',
-      ip: '192.168.0.1'
+      bandStr: ''
     }
-  },
-  computed: {
   },
   watch: {
     dataR() {
       this.$nextTick(() => {
         const textarea = document.getElementById('scroll_text')
-        textarea.scrollTop = textarea.scrollHeight
+        if (textarea) {
+          textarea.scrollTop = textarea.scrollHeight
+        }
       })
     }
   },
   created() {
-    window.that = this
+    this.serialManager = new SerialPortManager()
+    this.serialManager.setDataHandler(this.handleSerialData)
+    this.serialManager.setErrorHandler(this.handleSerialError)
+
+    // 定时检查连接状态
     this.timer = setInterval(() => {
-      this.isOpen = !!this.port.readable
+      this.isOpen = this.serialManager.isOpen
     }, 100)
   },
-  async unmounted() {
-    clearInterval(this.timer)
-    try {
-      this.reader.releaseLock()
-      this.writer.releaseLock()
-      await this.port.close()
-      this.reader = {}
-    } catch (error) { }
+  beforeUnmount() {
+    this.cleanup()
   },
   methods: {
     async click() {
-      if (!navigator.serial) {
+      if (!SerialPortManager.isSupported()) {
         alert('该浏览器不支持，仅支持基于chromium内核的pc浏览器')
         return
       }
+
       try {
-        if (this.port.getInfo && this.port.readable) {
-          try {
-            this.reader.releaseLock()
-            this.writer.releaseLock()
-          } catch (error) { }
-          await this.port.close()
-          this.reader = {}
+        if (this.isOpen) {
+          // 断开连接
+          await this.serialManager.closePort()
         } else {
-          const port = await navigator.serial.requestPort()
-          this.port = port
-          if (!this.port.readable) {
-            // 打开串口
-            await port.open({
-              dataBits: 8, // 数据位
-              stopBits: 1, // 停止位
-              parity: 'none', // 奇偶校验
-              baudRate: 9600 // 波特率
-            })
-            this.reader = this.port.readable.getReader()
-            this.writer = this.port.writable.getWriter()
-            this.write('AT+CGSN')
-            setTimeout(() => { this.write('AT*MRD_SN?') }, 500)
-            setTimeout(() => { this.write('AT*MRD_WIFIID?') }, 1000)
-            setTimeout(() => { this.getBand() }, 1500)
+          // 请求端口并连接
+          const portSelected = await this.serialManager.requestPort()
+          if (portSelected) {
+            const opened = await this.serialManager.openPort()
+            if (opened) {
+              this.initializeData()
+            }
           }
         }
       } catch (error) {
-        console.log('error', error)
-        error.message && !error.message.includes('No port selected by the user') && alert(error.message)
+        console.error('Connection error:', error)
+        if (error.message && !error.message.includes('No port selected by the user')) {
+          alert(error.message)
+        }
+      }
+    },
+
+    initializeData() {
+      // 延迟发送初始化命令
+      setTimeout(() => this.sendCommand('AT+CGSN'), 500)
+      setTimeout(() => this.sendCommand('AT*MRD_SN?'), 1000)
+      setTimeout(() => this.sendCommand('AT*MRD_WIFIID?'), 1500)
+      setTimeout(() => this.getBand(), 2000)
+    },
+
+    async sendCommand(command) {
+      if (!this.isOpen) {return}
+
+      try {
+        await this.serialManager.sendCommand(command)
+        // 延迟读取响应
+        setTimeout(() => this.readResponse(), 500)
+      } catch (error) {
+        console.error('Send command error:', error)
+        this.handleSerialError(error)
+      }
+    },
+
+    async readResponse() {
+      try {
+        // readData 会触发 dataHandler，日志追加与解析都在其中完成
+        await this.serialManager.readData()
+      } catch (error) {
+        console.error('Read response error:', error)
+      }
+    },
+
+    handleSerialData(data) {
+      this.dataR += data
+      this.parseResponse(data)
+    },
+
+    handleSerialError(error) {
+      console.error('Serial error:', error)
+      if (error.message && !error.message.includes('No port selected by the user')) {
+        alert(`串口错误: ${error.message}`)
+      }
+    },
+
+    parseResponse(str) {
+      // 解析IMEI
+      if (str.includes('+CGSN: ')) {
+        this.imei = str.split('+CGSN: ')[1].split('\r\n')[0]
+      } else if (str.includes('AT+CGSN\r\r\n')) {
+        this.imei = str.split('AT+CGSN\r\r\n')[1].split('\r\n')[0]
       }
 
+      // 解析SN
+      if (str.includes('*MRD_SN:')) {
+        this.sn = str.split('*MRD_SN:')[1].split('\r\n')[0]
+      }
+
+      // 解析MAC地址
+      if (str.includes('*MRD_WIFIID: ')) {
+        this.mac = str.split('*MRD_WIFIID: ')[1].split('\r\n')[0].replaceAll(':', '')
+      }
+
+      // 解析频段信息
+      if (str.includes('*BAND:') && str.length > 20) {
+        this.bandStr = str.split('*BAND:')[1].split('\r\n')[0]
+        this.checked = this.parseLockedBand(this.bandStr)
+      }
     },
+
+    // 与旧逻辑一致：bandH/bandL 两个位图字段合成已选频段
+    parseLockedBand(bandStr) {
+      let arr = bandStr.split(',')
+      if (arr.length < 5) {return []}
+      let bandH = parseInt(arr[3]) || 0
+      let bandL = parseInt(arr[4]) || 0
+      let checked = []
+      // 高位图：bit5-bit8 对应 B38-B41
+      bandH.toString(2).split('').reverse().forEach((item, index) => {
+        if (item === '1') {
+          if (index === 5) {checked.push(38)}
+          if (index === 6) {checked.push(39)}
+          if (index === 7) {checked.push(40)}
+          if (index === 8) {checked.push(41)}
+        }
+      })
+      // 低位图：bit0-bit4 对应 B1-B5，仅保留列表内的频段
+      bandL.toString(2).split('').reverse().forEach((item, index) => {
+        if (item === '1' && [1, 3, 5, 8].includes(index + 1)) {
+          checked.push(index + 1)
+        }
+      })
+      return checked
+    },
+
     getBand() {
-      this.write('AT*BAND?')
+      this.sendCommand('AT*BAND?')
     },
-    async read() {
-      const reader = this.reader
-      // 监听来自串口的数据
-      const { value, done } = await reader.read()
-      let str = Uint8ArrayToString(value)
-      console.log('接收', str)
-      this.dataR += str
-      this.dataHandler(str)
-    },
-    async write(atStr) {
-      const writer = this.writer
-      let str = (atStr || this.dataW) + '\r\n'
-      // this.dataR += str
-      // console.log('发送', str)
-      let arr = stringToUint8Array(str)
-      await writer.write(arr)
-      setTimeout(() => {
-        this.read()
-      }, 500)
-    },
-    dataHandler(str) {
-      let bandStr = 'ZLTEAMTBAND: '
-      bandStr = '*BAND:'
-      if (str.includes(bandStr) && str.length > 20) {
-        this.bandStr = str.split(bandStr)[1].split('\r\n')[0]
-        let arr = str.split(',')
-        let bandH = parseInt(arr[3]).toString(2).split('').reverse()
-        let bandL = parseInt(arr[4]).toString(2).split('').reverse()
-        let checked = []
-        bandH.forEach((item, index) => {
-          if (item === '1') {
-            if (index === 5) {
-              checked.push(38)
-            }
-            if (index === 6) {
-              checked.push(39)
-            }
-            if (index === 7) {
-              checked.push(40)
-            }
-            if (index === 8) {
-              checked.push(41)
-            }
-          }
-        })
-        bandL.forEach((item, index) => {
-          if (item === '1' && [1, 3, 5, 8].includes(index + 1)) {
-            checked.push(index + 1)
-          }
-        })
-        this.checked = checked
-      }
-      bandStr = '+CGSN: '
-      if (str.includes(bandStr)) {
-        this.imei = str.split(bandStr)[1].split('\r\n')[0]
-      }
-      bandStr = 'AT+CGSN\r\r\n'
-      if (!str.includes('+CGSN: ') && str.includes(bandStr)) {
-        this.imei = str.split(bandStr)[1].split('\r\n')[0]
-      }
-      bandStr = '*MRD_SN:'
-      if (str.includes(bandStr)) {
-        this.sn = str.split(bandStr)[1].split('\r\n')[0]
-      }
-      bandStr = '*MRD_WIFIID: '
-      if (str.includes(bandStr)) {
-        this.mac = str.split(bandStr)[1].split('\r\n')[0].replaceAll(':', '')
-      }
-    },
-    submit() {
-      let arr = []
+
+    submit(selectedBands) {
       let bandH = 0
       let bandL = 0
-      this.checked.forEach(item => {
+      selectedBands.forEach(item => {
         if (item <= 20) {
           bandL += Math.pow(2, item - 1)
         }
@@ -302,36 +281,66 @@ export default {
         }
       })
       let bandArr = this.bandStr.split(',')
+      if (bandArr.length < 5) {
+        bandArr = ['0', '0', '0', '0', '0']
+      }
       bandArr[3] = bandH
       bandArr[4] = bandL
-      let bandStr = `AT*BAND=${bandArr.join(',')}`
-      this.write(bandStr)
+      this.sendCommand(`AT*BAND=${bandArr.join(',')}`)
+    },
+
+    cleanup() {
+      if (this.timer) {
+        clearInterval(this.timer)
+      }
+      if (this.serialManager) {
+        this.serialManager.closePort()
+      }
     }
   }
-}
-function Uint8ArrayToString(fileData) {
-  var dataString = ''
-  for (var i = 0; i < fileData.length; i++) {
-    dataString += String.fromCharCode(fileData[i])
-  }
-
-  return dataString
-
-}
-
-function stringToUint8Array(str) {
-  var arr = []
-  for (var i = 0; i < str.length; i++) {
-    arr.push(str.charCodeAt(i))
-  }
-
-  var tmpUint8Array = new Uint8Array(arr)
-  return tmpUint8Array
 }
 </script>
 
 <style scoped>
+.atMaster {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
 button {
   margin: 5px 10px;
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+button:hover:not(:disabled) {
+  background-color: #f0f0f0;
+  border-color: #999;
+}
+
+input {
+  margin: 0 5px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+input:focus {
+  outline: none;
+  border-color: #1890ff;
+}
+
+.content {
+  margin-top: 20px;
+}
+
+label {
+  font-weight: bold;
+  margin-right: 5px;
 }
 </style>
