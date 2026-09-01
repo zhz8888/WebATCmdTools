@@ -1,15 +1,20 @@
 <template>
-  <div class="space-y-4">
+  <div class="card">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-lg font-bold text-ink">ASR</h1>
+      <div class="flex items-center gap-3">
+        <button class="btn px-3" title="返回首页" @click="$router.push('/')">←</button>
+        <h1 class="text-lg font-bold text-ink">ASR</h1>
+      </div>
       <button class="btn" :class="isOpen ? 'btn-danger' : 'btn-primary'" @click="togglePort">
         {{ isOpen ? '断开连接' : '选择端口' }}
         <span v-if="isOpen" class="ml-1 inline-block size-2 rounded-full bg-green-500" />
       </button>
     </div>
 
+    <hr class="my-5 border-cream" />
+
     <template v-if="isOpen">
-      <section class="card">
+      <section class="mb-5">
         <h2 class="card-title">工厂模式</h2>
         <div class="flex flex-wrap gap-2">
           <button class="btn" @click="sendCommand('AT*PROD=1')">进入工厂模式</button>
@@ -18,7 +23,7 @@
         <p class="hint mt-2">需开启工厂模式才能写号，写入之前先删除</p>
       </section>
 
-      <section class="card">
+      <section class="mb-5">
         <h2 class="card-title">写号</h2>
         <div class="space-y-3">
           <div class="flex flex-wrap items-center gap-2">
@@ -62,7 +67,7 @@
         </div>
       </section>
 
-      <section class="card">
+      <section class="mb-5">
         <h2 class="card-title">SIM 与设备</h2>
         <div class="flex flex-wrap gap-2">
           <button class="btn" @click="sendCommand('AT+SWSIM=0')">切到卡1</button>
@@ -71,7 +76,7 @@
         </div>
       </section>
 
-      <section class="card">
+      <section class="mb-5">
         <h2 class="card-title">频段锁定</h2>
         <BandSelector
           :available-bands="list"
@@ -82,7 +87,7 @@
         />
       </section>
 
-      <section class="card">
+      <section class="mb-5">
         <h2 class="card-title">串口控制台</h2>
         <SerialConsole
           :output-data="dataR"
