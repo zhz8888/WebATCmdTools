@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- AT 命令工具标识：终端提示符 >_ -->
+  <rect width="64" height="64" rx="14" fill="#D97757" />
+  <polyline
+    points="15,20 31,32 15,44"
+    fill="none"
+    stroke="#FAF9F5"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <rect x="36" y="38" width="14" height="6" rx="3" fill="#FAF9F5" />
+</svg>

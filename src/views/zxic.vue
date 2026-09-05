@@ -1,95 +1,93 @@
 <template>
-  <!-- 中兴微平台页：单卡片布局，横线以下按功能分区（ADB/工厂模式/写号/频段/小区/控制台） -->
-  <div class="card">
-    <!-- 标题行：返回首页 + 连接开关 -->
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <button class="btn px-3" title="返回首页" @click="$router.push('/')">←</button>
-        <h1 class="text-lg font-bold text-ink">中兴微</h1>
-      </div>
-      <button class="btn" :class="isOpen ? 'btn-danger' : 'btn-primary'" @click="togglePort">
-        {{ isOpen ? '断开连接' : '选择端口' }}
-        <span v-if="isOpen" class="ml-1 inline-block size-2 rounded-full bg-green-500" />
-      </button>
-    </div>
+  <!-- 中兴微（ZXIC）平台页：设备状态栏 + 工作区（ADB/工厂模式/写号/频段/小区/控制台） -->
+  <div class="flex flex-col gap-3">
+    <DeviceBar title="中兴微" tag="ZXIC" :connected="isOpen" @toggle="togglePort" />
 
-    <hr class="my-5 border-cream" />
-
-    <template v-if="isOpen">
-      <section>
-        <h2 class="card-title">ADB 与设备管理</h2>
+    <div v-if="isOpen" class="panel workspace space-y-6">
+      <SectionPanel tag="ADB" title="ADB 与设备管理">
         <div class="flex flex-wrap items-center gap-2">
-          <label class="field-label">ip:</label>
-          <input v-model="ip" type="text" class="input w-36 font-mono" />
-          <button class="btn" @click="openADB">开启adb</button>
-          <button class="btn" @click="closeADB">关闭adb</button>
-          <button class="btn" @click="openADB2">开启adb2</button>
-          <button class="btn" @click="closeADB2">关闭adb2</button>
+          <label class="field-label" for="zxic-ip">IP</label>
+          <input id="zxic-ip" v-model="ip" type="text" class="input w-36 font-mono" />
+          <button class="btn" @click="openADB">开启 adb</button>
+          <button class="btn" @click="closeADB">关闭 adb</button>
+          <button class="btn" @click="openADB2">开启 adb2</button>
+          <button class="btn" @click="closeADB2">关闭 adb2</button>
           <button class="btn" @click="reboot">重启</button>
           <button class="btn" @click="reboot1869">重启2</button>
         </div>
-      </section>
+      </SectionPanel>
 
-      <section class="mb-5">
-        <h2 class="card-title">工厂模式</h2>
+      <SectionPanel tag="FACTORY" title="工厂模式" cmd="AT+ZMODE">
         <div class="flex flex-wrap gap-2">
-          <button class="btn" @click="write('AT+ZMODE=1')">进入工厂模式</button>
-          <button class="btn" @click="write('AT+ZMODE=0')">退出工厂模式</button>
+          <button class="btn" @click="sendCommand('AT+ZMODE=1')">进入工厂模式</button>
+          <button class="btn" @click="sendCommand('AT+ZMODE=0')">退出工厂模式</button>
         </div>
-      </section>
+      </SectionPanel>
 
-      <section class="mb-5">
-        <h2 class="card-title">写号</h2>
+      <SectionPanel tag="NVRAM" title="写号" cmd="AT+MODIMEI">
         <div class="space-y-3">
           <div class="flex flex-wrap items-center gap-2">
-            <label class="field-label w-20">IMEI:</label>
-            <input v-model="imei" type="text" class="input min-w-0 flex-1 font-mono" />
-            <button class="btn" @click="write('AT+CGSN')">读取</button>
-            <button class="btn btn-primary" @click="write('AT+MODIMEI=' + imei)">写入</button>
+            <label class="field-label w-20" for="zxic-imei">IMEI</label>
+            <input
+              id="zxic-imei"
+              v-model="imei"
+              type="text"
+              class="input min-w-0 flex-1 font-mono"
+            />
+            <button class="btn" @click="sendCommand('AT+CGSN')">读取</button>
+            <button class="btn btn-primary" @click="sendCommand('AT+MODIMEI=' + imei)">写入</button>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <label class="field-label w-20">无线MAC:</label>
-            <input v-model="mac" type="text" class="input min-w-0 flex-1 font-mono" />
-            <button class="btn" @click="write('AT+MAC?')">读取</button>
-            <button class="btn btn-primary" @click="write('AT+MAC=' + mac)">写入</button>
+            <label class="field-label w-20" for="zxic-mac">无线 MAC</label>
+            <input id="zxic-mac" v-model="mac" type="text" class="input min-w-0 flex-1 font-mono" />
+            <button class="btn" @click="sendCommand('AT+MAC?')">读取</button>
+            <button class="btn btn-primary" @click="sendCommand('AT+MAC=' + mac)">写入</button>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <label class="field-label w-20">有线MAC:</label>
-            <input v-model="mac2" type="text" class="input min-w-0 flex-1 font-mono" />
-            <button class="btn" @click="write('AT+MAC2?')">读取</button>
-            <button class="btn btn-primary" @click="write('AT+MAC2=' + mac2)">写入</button>
+            <label class="field-label w-20" for="zxic-mac2">有线 MAC</label>
+            <input
+              id="zxic-mac2"
+              v-model="mac2"
+              type="text"
+              class="input min-w-0 flex-1 font-mono"
+            />
+            <button class="btn" @click="sendCommand('AT+MAC2?')">读取</button>
+            <button class="btn btn-primary" @click="sendCommand('AT+MAC2=' + mac2)">写入</button>
           </div>
         </div>
-      </section>
+      </SectionPanel>
 
-      <section class="mb-5">
-        <h2 class="card-title">频段锁定</h2>
-        <div class="flex flex-wrap gap-1.5">
-          <label
-            v-for="item in list"
-            :key="item"
-            class="flex cursor-pointer items-center gap-1.5 rounded-lg border border-cream bg-ivory px-2.5 py-1.5 text-sm text-ink transition-colors duration-150 has-checked:border-claude-accent has-checked:bg-claude/10 hover:border-claude-accent"
-          >
-            <input v-model.number="checked" type="checkbox" :value="item" class="accent-claude" />
-            <span>LTE B{{ item }}</span>
-          </label>
-        </div>
-        <div class="mt-3 flex flex-wrap gap-2">
-          <button class="btn" @click="getBand">读取频段</button>
-          <button class="btn btn-primary" :disabled="!checked.length" @click="submit">
-            锁定频段
-          </button>
-          <button class="btn" @click="resetNetWork">重启网络</button>
-        </div>
-      </section>
+      <SectionPanel tag="RF" title="频段锁定" cmd="AT+ZLTEBAND">
+        <BandSelector
+          :available-bands="list"
+          :is-connected="isOpen"
+          :initial-selected-bands="checked"
+          @read-bands="getBand"
+          @submit-bands="submit"
+          @update:selected-bands="checked = $event"
+        >
+          <template #controls>
+            <div class="mb-3 flex flex-wrap gap-2">
+              <button class="btn" :disabled="!isOpen" @click="getBand">读取频段</button>
+              <button
+                class="btn btn-primary"
+                :disabled="!isOpen || !checked.length"
+                @click="submit()"
+              >
+                锁定频段
+              </button>
+              <button class="btn" :disabled="!isOpen" @click="resetNetWork">重启网络</button>
+            </div>
+          </template>
+        </BandSelector>
+      </SectionPanel>
 
-      <section class="mb-5">
-        <h2 class="card-title">小区锁定</h2>
+      <SectionPanel tag="CELL" title="小区锁定" cmd="AT+ZLC">
         <div class="flex flex-wrap items-center gap-2">
-          <label class="field-label">频点:</label>
-          <input v-model="lteCell.arfcn" type="text" class="input w-24 font-mono" />
-          <label class="field-label">小区:</label>
-          <input v-model="lteCell.pci" type="text" class="input w-24 font-mono" />
+          <label class="field-label" for="zxic-arfcn">频点</label>
+          <input id="zxic-arfcn" v-model="lteCell.arfcn" type="text" class="input w-24 font-mono" />
+          <label class="field-label" for="zxic-pci">小区</label>
+          <input id="zxic-pci" v-model="lteCell.pci" type="text" class="input w-24 font-mono" />
           <label class="flex cursor-pointer items-center gap-1.5 text-sm text-ink-soft">
             <input
               v-model.number="lteCell.isLock"
@@ -99,45 +97,54 @@
             />
             <span>是否锁定</span>
           </label>
-          <button class="btn" @click="write('AT+ZLC?')">读取</button>
+          <button class="btn" @click="sendCommand('AT+ZLC?')">读取</button>
           <button
             class="btn btn-primary"
-            @click="write(`AT+ZLC=${lteCell.isLock ? 1 : 0},${lteCell.arfcn},${lteCell.pci}`)"
+            @click="sendCommand(`AT+ZLC=${lteCell.isLock ? 1 : 0},${lteCell.arfcn},${lteCell.pci}`)"
           >
             写入
           </button>
         </div>
         <p class="hint mt-2">显示的仅为之前保存锁定小区的数据，并非是当前实际接入的小区</p>
-      </section>
+      </SectionPanel>
 
-      <section class="mb-5">
-        <h2 class="card-title">串口控制台</h2>
+      <SectionPanel tag="CONSOLE" title="串口控制台">
         <SerialConsole
           :output-data="dataR"
           :is-connected="isOpen"
-          @send-command="write"
+          @send-command="sendCommand"
           @clear-output="dataR = ''"
         >
           <template #controls>
             <div class="mb-3 flex flex-wrap gap-2">
-              <button class="btn" @click="write('AT+CGEQOSRDP=1')">限速检测</button>
+              <button class="btn" @click="sendCommand('AT+CGEQOSRDP=1')">限速检测</button>
             </div>
           </template>
         </SerialConsole>
-      </section>
-    </template>
+      </SectionPanel>
+    </div>
 
-    <p v-else class="text-center text-sm text-ink-soft/70">请连接设备以使用 AT 命令功能</p>
+    <div v-else class="panel">
+      <ConnectPrompt @connect="togglePort" />
+    </div>
   </div>
 </template>
 
 <script>
+import BandSelector from '../components/BandSelector.vue'
+import ConnectPrompt from '../components/ConnectPrompt.vue'
+import DeviceBar from '../components/DeviceBar.vue'
+import SectionPanel from '../components/SectionPanel.vue'
 import SerialConsole from '../components/SerialConsole.vue'
 import { createSerialPortMixin } from '../utils/serialPortMixin.js'
 
 export default {
-  name: 'ZTEView',
+  name: 'ZxicView',
   components: {
+    BandSelector,
+    ConnectPrompt,
+    DeviceBar,
+    SectionPanel,
     SerialConsole
   },
   mixins: [createSerialPortMixin()],
@@ -230,12 +237,12 @@ export default {
     },
 
     // 将勾选的频段编码为 8 组位图并发送锁定命令
-    submit() {
+    submit(bands = this.checked) {
       let arr = []
       for (var i = 0; i < 8; i++) {
         let str = ''
         for (var j = 0; j < 8; j++) {
-          let isLock = this.checked.includes(i * 8 + j + 1)
+          let isLock = bands.includes(i * 8 + j + 1)
           if (isLock) {
             str = '1' + str
           } else {

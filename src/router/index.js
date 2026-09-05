@@ -11,9 +11,9 @@ const routes = [
     }
   },
   {
-    path: '/zc',
-    name: 'zte',
-    component: () => import('../views/zc.vue'),
+    path: '/zxic',
+    name: 'zxic',
+    component: () => import('../views/zxic.vue'),
     meta: {
       title: 'AT命令工具 - 中兴微'
     }

@@ -1,36 +1,27 @@
 <template>
-  <!-- ASR 平台页：单卡片布局，横线以下按功能分区（工厂模式/写号/SIM/频段/控制台） -->
-  <div class="card">
-    <!-- 标题行：返回首页 + 连接开关 -->
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <button class="btn px-3" title="返回首页" @click="$router.push('/')">←</button>
-        <h1 class="text-lg font-bold text-ink">ASR</h1>
-      </div>
-      <button class="btn" :class="isOpen ? 'btn-danger' : 'btn-primary'" @click="togglePort">
-        {{ isOpen ? '断开连接' : '选择端口' }}
-        <span v-if="isOpen" class="ml-1 inline-block size-2 rounded-full bg-green-500" />
-      </button>
-    </div>
+  <!-- ASR 平台页：设备状态栏 + 工作区（工厂模式/写号/SIM/频段/控制台） -->
+  <div class="flex flex-col gap-3">
+    <DeviceBar title="翱捷" tag="ASR" :connected="isOpen" @toggle="togglePort" />
 
-    <hr class="my-5 border-cream" />
-
-    <template v-if="isOpen">
-      <section class="mb-5">
-        <h2 class="card-title">工厂模式</h2>
+    <div v-if="isOpen" class="panel workspace space-y-6">
+      <SectionPanel tag="FACTORY" title="工厂模式" cmd="AT*PROD">
         <div class="flex flex-wrap gap-2">
           <button class="btn" @click="sendCommand('AT*PROD=1')">进入工厂模式</button>
           <button class="btn" @click="sendCommand('AT*PROD=0')">退出工厂模式</button>
         </div>
         <p class="hint mt-2">需开启工厂模式才能写号，写入之前先删除</p>
-      </section>
+      </SectionPanel>
 
-      <section class="mb-5">
-        <h2 class="card-title">写号</h2>
+      <SectionPanel tag="NVRAM" title="写号" cmd="AT*MRD_IMEI">
         <div class="space-y-3">
           <div class="flex flex-wrap items-center gap-2">
-            <label class="field-label w-20">IMEI:</label>
-            <input v-model="imei" type="text" class="input min-w-0 flex-1 font-mono" />
+            <label class="field-label w-20" for="asr-imei">IMEI</label>
+            <input
+              id="asr-imei"
+              v-model="imei"
+              type="text"
+              class="input min-w-0 flex-1 font-mono"
+            />
             <button class="btn" @click="sendCommand('AT+CGSN')">读取</button>
             <button class="btn" @click="sendCommand('AT*MRD_IMEI=D')">删除</button>
             <button
@@ -41,8 +32,9 @@
             </button>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <label class="field-label w-20">SN:</label>
+            <label class="field-label w-20" for="asr-sn">SN</label>
             <input
+              id="asr-sn"
               v-model="sn"
               type="text"
               placeholder="仅支持有SN号的设备"
@@ -55,8 +47,8 @@
             </button>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <label class="field-label w-20">MAC:</label>
-            <input v-model="mac" type="text" class="input min-w-0 flex-1 font-mono" />
+            <label class="field-label w-20" for="asr-mac">MAC</label>
+            <input id="asr-mac" v-model="mac" type="text" class="input min-w-0 flex-1 font-mono" />
             <button class="btn" @click="sendCommand('AT*MRD_WIFIID?')">读取</button>
             <button class="btn" @click="sendCommand('AT*MRD_WIFIID=D')">删除</button>
             <button
@@ -67,19 +59,17 @@
             </button>
           </div>
         </div>
-      </section>
+      </SectionPanel>
 
-      <section class="mb-5">
-        <h2 class="card-title">SIM 与设备</h2>
+      <SectionPanel tag="SIM" title="SIM 与设备" cmd="AT+SWSIM">
         <div class="flex flex-wrap gap-2">
           <button class="btn" @click="sendCommand('AT+SWSIM=0')">切到卡1</button>
           <button class="btn" @click="sendCommand('AT+SWSIM=1')">切到卡2</button>
           <button class="btn" @click="sendCommand('AT+RESET')">重启</button>
         </div>
-      </section>
+      </SectionPanel>
 
-      <section class="mb-5">
-        <h2 class="card-title">频段锁定</h2>
+      <SectionPanel tag="RF" title="频段锁定" cmd="AT*BAND">
         <BandSelector
           :available-bands="list"
           :is-connected="isOpen"
@@ -87,25 +77,29 @@
           @read-bands="getBand"
           @submit-bands="submit"
         />
-      </section>
+      </SectionPanel>
 
-      <section class="mb-5">
-        <h2 class="card-title">串口控制台</h2>
+      <SectionPanel tag="CONSOLE" title="串口控制台">
         <SerialConsole
           :output-data="dataR"
           :is-connected="isOpen"
           @send-command="sendCommand"
           @clear-output="dataR = ''"
         />
-      </section>
-    </template>
+      </SectionPanel>
+    </div>
 
-    <p v-else class="text-center text-sm text-ink-soft/70">请连接设备以使用 AT 命令功能</p>
+    <div v-else class="panel">
+      <ConnectPrompt @connect="togglePort" />
+    </div>
   </div>
 </template>
 
 <script>
 import BandSelector from '../components/BandSelector.vue'
+import ConnectPrompt from '../components/ConnectPrompt.vue'
+import DeviceBar from '../components/DeviceBar.vue'
+import SectionPanel from '../components/SectionPanel.vue'
 import SerialConsole from '../components/SerialConsole.vue'
 import { createSerialPortMixin } from '../utils/serialPortMixin.js'
 
@@ -113,6 +107,9 @@ export default {
   name: 'ASRView',
   components: {
     BandSelector,
+    ConnectPrompt,
+    DeviceBar,
+    SectionPanel,
     SerialConsole
   },
   mixins: [createSerialPortMixin()],

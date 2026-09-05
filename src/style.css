@@ -1,40 +1,158 @@
 @import 'tailwindcss';
+@import './assets/fonts/noto-serif-sc.css';
 
+/* IBM Plex Mono：等宽字体，用于 AT 命令、串口数据与状态标注 */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-mono-latin-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-mono-latin-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-mono-latin-600.woff2') format('woff2');
+}
+
+/* Archivo：拉丁界面字体（近似 Styrene 的几何感），中文回退系统黑体 */
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/archivo-latin-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/archivo-latin-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/archivo-latin-600.woff2') format('woff2');
+}
+
+/* Source Serif 4：拉丁展示衬线（近似 Copernicus 的书卷感），中文回退思源宋体 */
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/source-serif-4-latin-600.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/source-serif-4-latin-700.woff2') format('woff2');
+}
+
+/*
+ * Claude 主题设计令牌：
+ * 米白页面 + 白色卡片 + 奶油色分隔，陶土橙为品牌主色；
+ * 绿/琥珀/红仅用于表达连接与操作状态。
+ */
 @theme {
-  /* Claude 品牌配色 */
+  --font-sans:
+    'Archivo', system-ui, -apple-system, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    'Noto Sans CJK SC', sans-serif;
+  --font-serif: 'Source Serif 4', 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
   --color-claude: #d97757;
   --color-claude-hover: #c96442;
   --color-claude-accent: #cc785c;
   --color-ivory: #faf9f5;
   --color-cream: #f0eee6;
+  --color-line: #e3dfd5;
+  --color-line-strong: #d2ccbd;
   --color-card: #ffffff;
   --color-ink: #141413;
   --color-ink-soft: #3d3929;
+  --color-ink-faint: #706b62;
+
+  --color-ok: #4c7d50;
+  --color-ok-bright: #63a36b;
+  --color-warn: #a16207;
+  --color-danger: #b03d2e;
+
+  --color-terminal: #1f1e1b;
+  --color-terminal-text: #d6d3c9;
+}
+
+@layer base {
+  ::selection {
+    background-color: color-mix(in srgb, var(--color-claude) 22%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-claude-accent);
+    outline-offset: 2px;
+  }
+
+  /* 滚动条与暖色面板同调，避免串口控制台区域突兀 */
+  textarea::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  textarea::-webkit-scrollbar-thumb {
+    background: var(--color-line-strong);
+    border-radius: 4px;
+  }
 }
 
 @layer components {
   .btn {
-    @apply cursor-pointer rounded-lg border border-cream bg-card px-4 py-2 text-sm font-medium text-ink transition-colors duration-150 hover:border-claude-accent disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-line bg-card px-4 py-2 text-sm font-medium text-ink transition-all duration-150 hover:border-claude-accent active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-line disabled:hover:bg-card;
   }
 
   .btn-primary {
-    @apply border-claude bg-claude text-white hover:border-claude-hover hover:bg-claude-hover;
+    @apply border-claude bg-claude text-white hover:border-claude-hover hover:bg-claude-hover active:translate-y-px;
   }
 
   .btn-danger {
-    @apply border-red-200 bg-white text-red-600 hover:border-red-400 hover:bg-red-50;
+    @apply border-danger/25 bg-card text-danger hover:border-danger hover:bg-danger/5;
   }
 
   .input {
-    @apply rounded-lg border border-cream bg-card px-3 py-2 text-sm text-ink outline-none transition-colors duration-150 focus:border-claude-accent focus:ring-2 focus:ring-claude/20;
+    @apply rounded-lg border border-line-strong bg-card px-3 py-2 text-sm text-ink outline-none transition-colors duration-150 placeholder:text-ink-faint/70 focus:border-claude-accent focus:ring-2 focus:ring-claude/20;
   }
 
-  .card {
-    @apply rounded-xl border border-cream bg-card p-4 shadow-sm sm:p-5;
+  /* 面板卡：页面上的功能分区容器 */
+  .panel {
+    @apply rounded-xl border border-line bg-card p-4 shadow-sm sm:p-5;
   }
 
-  .card-title {
-    @apply mb-3 border-b border-cream pb-2 text-sm font-semibold tracking-wide text-ink-soft;
+  /* 分区标题左侧的等宽眉标（NVRAM / RF / CONSOLE…），陶土色丝印 */
+  .eyebrow {
+    @apply font-mono text-[10px] font-medium tracking-[0.14em] text-claude-accent uppercase;
+  }
+
+  /* 平台代号徽标（ZTE / ASR / SPRD） */
+  .tag {
+    @apply inline-flex items-center rounded-md border border-line bg-ivory px-1.5 py-0.5 font-mono text-[11px] font-medium tracking-wider text-ink-soft;
   }
 
   .field-label {
@@ -42,6 +160,89 @@
   }
 
   .hint {
-    @apply text-xs text-ink-soft/60;
+    @apply text-xs leading-5 text-ink-faint;
+  }
+
+  /* 频段勾选片：选中态以陶土色丝印高亮 */
+  .chip {
+    @apply flex cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-ivory px-2.5 py-1.5 text-sm text-ink transition-colors duration-150 hover:border-claude-accent has-checked:border-claude has-checked:bg-claude/10;
+  }
+
+  /* 链路指示灯：灰 = 未连接，绿 = 已连接（带呼吸光晕） */
+  .led {
+    @apply inline-block size-2 shrink-0 rounded-full bg-line-strong transition-colors duration-300;
+  }
+
+  .led-on {
+    background-color: var(--color-ok-bright);
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--color-ok-bright) 18%, transparent),
+      0 0 8px color-mix(in srgb, var(--color-ok-bright) 55%, transparent);
+  }
+
+  /* 串口控制台：暖黑终端内嵌于米白面板 */
+  .terminal {
+    @apply w-full resize-y rounded-lg border border-terminal bg-terminal p-3 font-mono text-xs leading-5 text-terminal-text outline-none;
+  }
+}
+
+/* 连接成功后工作区“上电”：分区错峰浮现 */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes panel-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .workspace > * {
+    animation: panel-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .workspace > :nth-child(1) {
+    animation-delay: 0.04s;
+  }
+  .workspace > :nth-child(2) {
+    animation-delay: 0.1s;
+  }
+  .workspace > :nth-child(3) {
+    animation-delay: 0.16s;
+  }
+  .workspace > :nth-child(4) {
+    animation-delay: 0.22s;
+  }
+  .workspace > :nth-child(5) {
+    animation-delay: 0.28s;
+  }
+  .workspace > :nth-child(6) {
+    animation-delay: 0.34s;
+  }
+  .workspace > :nth-child(7) {
+    animation-delay: 0.4s;
+  }
+  .workspace > :nth-child(8) {
+    animation-delay: 0.46s;
+  }
+
+  @keyframes led-breathe {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--color-ok-bright) 18%, transparent),
+        0 0 6px color-mix(in srgb, var(--color-ok-bright) 45%, transparent);
+    }
+    50% {
+      box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--color-ok-bright) 26%, transparent),
+        0 0 10px color-mix(in srgb, var(--color-ok-bright) 70%, transparent);
+    }
+  }
+
+  .led-on {
+    animation: led-breathe 2.4s ease-in-out infinite;
   }
 }

@@ -14,13 +14,7 @@
       <button class="btn" @click="clearOutput">清理</button>
     </div>
 
-    <textarea
-      ref="outputTextarea"
-      :value="outputData"
-      readonly
-      :rows="rows"
-      class="w-full resize-y rounded-lg border border-cream bg-ink p-3 font-mono text-xs leading-5 text-claude/90 outline-none"
-    />
+    <textarea ref="outputTextarea" :value="outputData" readonly :rows="rows" class="terminal" />
   </div>
 </template>
 
@@ -41,7 +35,7 @@ export default {
     // 命令输入框占位文案
     inputPlaceholder: {
       type: String,
-      default: '发送自定义AT指令'
+      default: '输入 AT 指令，回车发送'
     },
     // 日志区行数
     rows: {

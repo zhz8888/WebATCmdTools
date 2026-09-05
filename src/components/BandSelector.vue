@@ -14,12 +14,13 @@
     </div>
 
     <div class="flex flex-wrap gap-1.5">
-      <label
-        v-for="band in availableBands"
-        :key="band"
-        class="flex cursor-pointer items-center gap-1.5 rounded-lg border border-cream bg-ivory px-2.5 py-1.5 text-sm text-ink transition-colors duration-150 has-checked:border-claude-accent has-checked:bg-claude/10 hover:border-claude-accent"
-      >
-        <input v-model="selectedBands" type="checkbox" :value="band" class="accent-claude" />
+      <label v-for="band in availableBands" :key="band" class="chip">
+        <input
+          v-model="selectedBands"
+          type="checkbox"
+          :value="band"
+          class="size-3.5 accent-claude"
+        />
         <span>LTE B{{ band }}</span>
       </label>
     </div>
