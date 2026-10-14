@@ -27,7 +27,8 @@ export default [
 
       // JavaScript规则（格式类规则一律交给 prettier）
       'no-unused-vars': 'error',
-      'no-console': 'warn',
+      // 串口链路的错误日志是故障排查的唯一线索，放行 console.error；其余 console 仍提示
+      'no-console': ['warn', { allow: ['error'] }],
       'no-debugger': 'error',
       eqeqeq: 'error',
       curly: 'error'
