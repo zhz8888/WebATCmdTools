@@ -15,12 +15,7 @@
 
     <div class="flex flex-wrap gap-1.5">
       <label v-for="band in availableBands" :key="band" class="chip">
-        <input
-          v-model="selectedBands"
-          type="checkbox"
-          :value="band"
-          class="size-3.5 accent-claude"
-        />
+        <input v-model="selection" type="checkbox" :value="band" class="size-3.5 accent-claude" />
         <span>LTE B{{ band }}</span>
       </label>
     </div>
@@ -34,7 +29,8 @@
 </template>
 
 <script>
-// 频段选择器：渲染可勾选的 LTE 频段列表，读取/锁定动作经事件交由父组件执行
+// 频段选择器：受控组件，选中项由父组件通过 v-model:selected-bands 持有，
+// 组件内不保留副本，避免父子双向同步互相触发
 export default {
   name: 'BandSelector',
   props: {
@@ -53,30 +49,22 @@ export default {
       type: Boolean,
       default: true
     },
-    // 外部同步进来的已选中频段（如设备上报的锁定状态）
-    initialSelectedBands: {
+    // 当前已选中的频段，由父组件通过 v-model:selected-bands 传入
+    selectedBands: {
       type: Array,
       default: () => []
     }
   },
   emits: ['read-bands', 'submit-bands', 'update:selected-bands'],
-  data() {
-    return {
-      selectedBands: []
-    }
-  },
-  watch: {
-    initialSelectedBands: {
-      handler(newVal) {
-        this.selectedBands = [...newVal]
+  computed: {
+    // 勾选框的写入入口：仅向外抛出变更，不修改 prop
+    selection: {
+      get() {
+        return this.selectedBands
       },
-      immediate: true
-    },
-    selectedBands: {
-      handler(newVal) {
-        this.$emit('update:selected-bands', newVal)
-      },
-      deep: true
+      set(value) {
+        this.$emit('update:selected-bands', value)
+      }
     }
   },
   methods: {

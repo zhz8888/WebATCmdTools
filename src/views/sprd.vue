@@ -15,12 +15,7 @@
               class="input min-w-0 flex-1 font-mono"
             />
             <button class="btn" @click="readIMEI1()">读取</button>
-            <button
-              class="btn btn-primary"
-              @click="sendCommand(`AT+SPIMEI =0,&quot;${imei1}&quot;`)"
-            >
-              写入
-            </button>
+            <button class="btn btn-primary" @click="writeImei1()">写入</button>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <label class="field-label w-20" for="sprd-imei2">IMEI2</label>
@@ -31,12 +26,7 @@
               class="input min-w-0 flex-1 font-mono"
             />
             <button class="btn" @click="readIMEI2()">读取</button>
-            <button
-              class="btn btn-primary"
-              @click="sendCommand(`AT+SPIMEI =1,&quot;${imei2}&quot;`)"
-            >
-              写入
-            </button>
+            <button class="btn btn-primary" @click="writeImei2()">写入</button>
           </div>
         </div>
       </SectionPanel>
@@ -49,9 +39,9 @@
 
       <SectionPanel tag="RF" title="频段锁定" cmd="AT+SPLBAND">
         <BandSelector
+          v-model:selected-bands="checked"
           :available-bands="list"
           :is-connected="isOpen"
-          :initial-selected-bands="checked"
           @read-bands="getBand"
           @submit-bands="submit"
         />
@@ -79,7 +69,9 @@ import ConnectPrompt from '../components/ConnectPrompt.vue'
 import DeviceBar from '../components/DeviceBar.vue'
 import SectionPanel from '../components/SectionPanel.vue'
 import SerialConsole from '../components/SerialConsole.vue'
+import { decodeBandBitmap, encodeBandBitmap } from '../utils/band.js'
 import { createSerialPortMixin } from '../utils/serialPortMixin.js'
+import { confirmWriteValue } from '../utils/writeGuard.js'
 
 export default {
   name: 'SprdView',
@@ -104,9 +96,9 @@ export default {
   methods: {
     initializeData() {
       // 延迟发送初始化命令，响应由后台读取循环统一回调解析
-      setTimeout(() => this.readIMEI1(), 500)
-      setTimeout(() => this.readIMEI2(), 1300)
-      setTimeout(() => this.getBand(), 2100)
+      this.later(() => this.readIMEI1(), 500)
+      this.later(() => this.readIMEI2(), 1300)
+      this.later(() => this.getBand(), 2100)
     },
 
     // 双卡 IMEI 用 AT+SPACTCARD 切卡后查询，卡号由回显内容在 parseResponse 中归属
@@ -160,56 +152,42 @@ export default {
       }
     },
 
-    // 与旧逻辑一致：bandH/bandL 两个位图字段合成已选频段
+    // bandH/bandL 两个位图字段合成已选频段：
+    // bandH 的 bit5-bit8 对应 B38-B41，bandL 的 bit0 起对应 B1 起，均只保留可勾选的频段
     parseLockedBand(bandH, bandL) {
-      let checked = []
-      // 高位图：bit5-bit8 对应 B38-B41
-      bandH
-        .toString(2)
-        .split('')
-        .reverse()
-        .forEach((item, index) => {
-          if (item === '1') {
-            if (index === 5) {
-              checked.push(38)
-            }
-            if (index === 6) {
-              checked.push(39)
-            }
-            if (index === 7) {
-              checked.push(40)
-            }
-            if (index === 8) {
-              checked.push(41)
-            }
-          }
-        })
-      // 低位图：所有置位的频段
-      checked.push(...this.getSupportedBand(bandL.toString(2)))
-      return checked
+      return [
+        ...decodeBandBitmap(bandH.toString(2), { baseBand: 33, allowed: this.list }),
+        ...decodeBandBitmap(bandL.toString(2), { baseBand: 1, allowed: this.list })
+      ]
     },
 
-    getSupportedBand(binStr) {
-      // 与旧逻辑一致：二进制位倒序后按位置推算频段号
-      return binStr.split('').reduce((p, c, i) => {
-        if (c === '1') {
-          p.push(i + 1)
-        }
-        return p
-      }, [])
+    // 校验并二次确认后写入 IMEI1（槽位 0）
+    writeImei1() {
+      const imei = confirmWriteValue('imei', this.imei1)
+      if (imei) {
+        this.sendCommand(`AT+SPIMEI =0,"${imei}"`)
+      }
+    },
+
+    // 校验并二次确认后写入 IMEI2（槽位 1）
+    writeImei2() {
+      const imei = confirmWriteValue('imei', this.imei2)
+      if (imei) {
+        this.sendCommand(`AT+SPIMEI =1,"${imei}"`)
+      }
     },
 
     // 将勾选的频段编码为高低位图并发送锁定命令
     submit(selectedBands) {
-      let bandH = 0
-      let bandL = 0
-      selectedBands.forEach(item => {
-        if (item <= 20) {
-          bandL += Math.pow(2, item - 1)
-        }
-        if (item >= 38 && item <= 41) {
-          bandH += Math.pow(2, item - 33)
-        }
+      const bandH = encodeBandBitmap(selectedBands, {
+        baseBand: 33,
+        maxOffset: 8,
+        allowed: this.list
+      })
+      const bandL = encodeBandBitmap(selectedBands, {
+        baseBand: 1,
+        maxOffset: 19,
+        allowed: this.list
       })
       this.sendCommand(`AT+SPLBAND=1,0,${bandH},0,${bandL},0`)
     }

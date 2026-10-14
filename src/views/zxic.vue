@@ -35,13 +35,13 @@
               class="input min-w-0 flex-1 font-mono"
             />
             <button class="btn" @click="sendCommand('AT+CGSN')">读取</button>
-            <button class="btn btn-primary" @click="sendCommand('AT+MODIMEI=' + imei)">写入</button>
+            <button class="btn btn-primary" @click="writeImei()">写入</button>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <label class="field-label w-20" for="zxic-mac">无线 MAC</label>
             <input id="zxic-mac" v-model="mac" type="text" class="input min-w-0 flex-1 font-mono" />
             <button class="btn" @click="sendCommand('AT+MAC?')">读取</button>
-            <button class="btn btn-primary" @click="sendCommand('AT+MAC=' + mac)">写入</button>
+            <button class="btn btn-primary" @click="writeMac()">写入</button>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <label class="field-label w-20" for="zxic-mac2">有线 MAC</label>
@@ -52,19 +52,18 @@
               class="input min-w-0 flex-1 font-mono"
             />
             <button class="btn" @click="sendCommand('AT+MAC2?')">读取</button>
-            <button class="btn btn-primary" @click="sendCommand('AT+MAC2=' + mac2)">写入</button>
+            <button class="btn btn-primary" @click="writeMac2()">写入</button>
           </div>
         </div>
       </SectionPanel>
 
       <SectionPanel tag="RF" title="频段锁定" cmd="AT+ZLTEBAND">
         <BandSelector
+          v-model:selected-bands="checked"
           :available-bands="list"
           :is-connected="isOpen"
-          :initial-selected-bands="checked"
           @read-bands="getBand"
           @submit-bands="submit"
-          @update:selected-bands="checked = $event"
         >
           <template #controls>
             <div class="mb-3 flex flex-wrap gap-2">
@@ -89,12 +88,7 @@
           <label class="field-label" for="zxic-pci">小区</label>
           <input id="zxic-pci" v-model="lteCell.pci" type="text" class="input w-24 font-mono" />
           <label class="flex cursor-pointer items-center gap-1.5 text-sm text-ink-soft">
-            <input
-              v-model.number="lteCell.isLock"
-              type="checkbox"
-              :value="true"
-              class="accent-claude"
-            />
+            <input v-model="lteCell.isLock" type="checkbox" class="accent-claude" />
             <span>是否锁定</span>
           </label>
           <button class="btn" @click="sendCommand('AT+ZLC?')">读取</button>
@@ -136,7 +130,9 @@ import ConnectPrompt from '../components/ConnectPrompt.vue'
 import DeviceBar from '../components/DeviceBar.vue'
 import SectionPanel from '../components/SectionPanel.vue'
 import SerialConsole from '../components/SerialConsole.vue'
+import { decodeBandBitmap, encodeBandBitmap } from '../utils/band.js'
 import { createSerialPortMixin } from '../utils/serialPortMixin.js'
+import { confirmWriteValue } from '../utils/writeGuard.js'
 
 export default {
   name: 'ZxicView',
@@ -167,11 +163,11 @@ export default {
     // 连接成功后依次发送初始化查询命令，间隔发送避免响应拥塞
     initializeData() {
       // 延迟发送初始化命令，响应由后台读取循环统一回调解析
-      setTimeout(() => this.sendCommand('AT+CGSN'), 500)
-      setTimeout(() => this.sendCommand('AT+MAC?'), 1000)
-      setTimeout(() => this.sendCommand('AT+MAC2?'), 1500)
-      setTimeout(() => this.getBand(), 2000)
-      setTimeout(() => this.sendCommand('AT+ZLC?'), 2500)
+      this.later(() => this.sendCommand('AT+CGSN'), 500)
+      this.later(() => this.sendCommand('AT+MAC?'), 1000)
+      this.later(() => this.sendCommand('AT+MAC2?'), 1500)
+      this.later(() => this.getBand(), 2000)
+      this.later(() => this.sendCommand('AT+ZLC?'), 2500)
     },
 
     // 解析串口响应：按响应前缀提取 IMEI、MAC、频段与小区锁定状态
@@ -210,17 +206,15 @@ export default {
       }
     },
 
-    // 将逗号分隔的位图字符串展开为支持的频段号列表（每字节 8 个频段）
+    // 把逗号分隔的位图字节串展开为频段号列表（每字节 8 个频段）
     getSupportedBand(str) {
-      return str.split(',').reduce((p, c, i) => {
-        let arrStr = parseInt(c).toString(2)
-        for (var j = 0; j < arrStr.length; j++) {
-          if (parseInt(arrStr[arrStr.length - j - 1])) {
-            p.push(i * 8 + j + 1)
-          }
-        }
-        return p
-      }, [])
+      return str
+        .split(',')
+        .reduce(
+          (bands, byte, index) =>
+            bands.concat(decodeBandBitmap(parseInt(byte).toString(2), { baseBand: index * 8 + 1 })),
+          []
+        )
     },
 
     // 从支持的频段中过滤出当前已锁定的频段
@@ -228,36 +222,51 @@ export default {
       return this.getSupportedBand(str).filter(item => this.list.includes(item))
     },
 
+    // 校验并二次确认后写入 IMEI
+    writeImei() {
+      const imei = confirmWriteValue('imei', this.imei)
+      if (imei) {
+        this.sendCommand('AT+MODIMEI=' + imei)
+      }
+    },
+
+    // 校验并二次确认后写入无线 MAC
+    writeMac() {
+      const mac = confirmWriteValue('mac', this.mac)
+      if (mac) {
+        this.sendCommand('AT+MAC=' + mac)
+      }
+    },
+
+    // 校验并二次确认后写入有线 MAC
+    writeMac2() {
+      const mac = confirmWriteValue('mac', this.mac2)
+      if (mac) {
+        this.sendCommand('AT+MAC2=' + mac)
+      }
+    },
+
     // 查询支持的频段与当前锁定状态（两次查询间隔 200ms）
     getBand() {
       this.sendCommand('AT+ZLTEAMTBAND?')
-      setTimeout(() => {
+      this.later(() => {
         this.sendCommand('AT+ZLTEBAND?')
       }, 200)
     },
 
-    // 将勾选的频段编码为 8 组位图并发送锁定命令
+    // 将勾选的频段按每字节 8 个频段编码为位图并发送锁定命令
     submit(bands = this.checked) {
-      let arr = []
-      for (var i = 0; i < 8; i++) {
-        let str = ''
-        for (var j = 0; j < 8; j++) {
-          let isLock = bands.includes(i * 8 + j + 1)
-          if (isLock) {
-            str = '1' + str
-          } else {
-            str = '0' + str
-          }
-        }
-        arr.push(parseInt(str, 2))
+      const bitmap = []
+      for (let i = 0; i < 8; i++) {
+        bitmap.push(encodeBandBitmap(bands, { baseBand: i * 8 + 1, maxOffset: 7 }))
       }
-      this.sendCommand('AT+ZLTEBAND=' + arr.join(','))
+      this.sendCommand('AT+ZLTEBAND=' + bitmap.join(','))
     },
 
     // 重启网络：先离线（CFUN=4）再恢复（CFUN=1）
     resetNetWork() {
       this.sendCommand('AT+CFUN=4')
-      setTimeout(() => {
+      this.later(() => {
         this.sendCommand('AT+CFUN=1')
       }, 5000)
     },

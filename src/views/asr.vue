@@ -24,12 +24,7 @@
             />
             <button class="btn" @click="sendCommand('AT+CGSN')">读取</button>
             <button class="btn" @click="sendCommand('AT*MRD_IMEI=D')">删除</button>
-            <button
-              class="btn btn-primary"
-              @click="sendCommand('AT*MRD_IMEI=W,0,01JAN1970,' + imei)"
-            >
-              写入
-            </button>
+            <button class="btn btn-primary" @click="writeImei()">写入</button>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <label class="field-label w-20" for="asr-sn">SN</label>
@@ -42,21 +37,14 @@
             />
             <button class="btn" @click="sendCommand('AT*MRD_SN?')">读取</button>
             <button class="btn" @click="sendCommand('AT*MRD_SN=D')">删除</button>
-            <button class="btn btn-primary" @click="sendCommand('AT*MRD_SN=W,0,01JAN1970,' + sn)">
-              写入
-            </button>
+            <button class="btn btn-primary" @click="writeSn()">写入</button>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <label class="field-label w-20" for="asr-mac">MAC</label>
             <input id="asr-mac" v-model="mac" type="text" class="input min-w-0 flex-1 font-mono" />
             <button class="btn" @click="sendCommand('AT*MRD_WIFIID?')">读取</button>
             <button class="btn" @click="sendCommand('AT*MRD_WIFIID=D')">删除</button>
-            <button
-              class="btn btn-primary"
-              @click="sendCommand('AT*MRD_WIFIID=W,0,01JAN1970,' + mac)"
-            >
-              写入
-            </button>
+            <button class="btn btn-primary" @click="writeMac()">写入</button>
           </div>
         </div>
       </SectionPanel>
@@ -71,9 +59,9 @@
 
       <SectionPanel tag="RF" title="频段锁定" cmd="AT*BAND">
         <BandSelector
+          v-model:selected-bands="checked"
           :available-bands="list"
           :is-connected="isOpen"
-          :initial-selected-bands="checked"
           @read-bands="getBand"
           @submit-bands="submit"
         />
@@ -101,7 +89,9 @@ import ConnectPrompt from '../components/ConnectPrompt.vue'
 import DeviceBar from '../components/DeviceBar.vue'
 import SectionPanel from '../components/SectionPanel.vue'
 import SerialConsole from '../components/SerialConsole.vue'
+import { decodeBandBitmap, encodeBandBitmap } from '../utils/band.js'
 import { createSerialPortMixin } from '../utils/serialPortMixin.js'
+import { confirmWriteValue } from '../utils/writeGuard.js'
 
 export default {
   name: 'ASRView',
@@ -127,10 +117,10 @@ export default {
     // 连接成功后依次发送初始化查询命令，间隔发送避免响应拥塞
     initializeData() {
       // 延迟发送初始化命令，响应由后台读取循环统一回调解析
-      setTimeout(() => this.sendCommand('AT+CGSN'), 500)
-      setTimeout(() => this.sendCommand('AT*MRD_SN?'), 1000)
-      setTimeout(() => this.sendCommand('AT*MRD_WIFIID?'), 1500)
-      setTimeout(() => this.getBand(), 2000)
+      this.later(() => this.sendCommand('AT+CGSN'), 500)
+      this.later(() => this.sendCommand('AT*MRD_SN?'), 1000)
+      this.later(() => this.sendCommand('AT*MRD_WIFIID?'), 1500)
+      this.later(() => this.getBand(), 2000)
     },
 
     // 解析串口响应：按响应前缀提取 IMEI、SN、MAC 与频段位图
@@ -159,47 +149,43 @@ export default {
       }
     },
 
-    // 与旧逻辑一致：bandH/bandL 两个位图字段合成已选频段
+    // bandH/bandL 两个位图字段合成已选频段：
+    // bandH 的 bit5-bit8 对应 B38-B41，bandL 的 bit0 起对应 B1 起，均只保留可勾选的频段
     parseLockedBand(bandStr) {
-      let arr = bandStr.split(',')
+      const arr = bandStr.split(',')
       if (arr.length < 5) {
         return []
       }
-      let bandH = parseInt(arr[3]) || 0
-      let bandL = parseInt(arr[4]) || 0
-      let checked = []
-      // 高位图：bit5-bit8 对应 B38-B41
-      bandH
-        .toString(2)
-        .split('')
-        .reverse()
-        .forEach((item, index) => {
-          if (item === '1') {
-            if (index === 5) {
-              checked.push(38)
-            }
-            if (index === 6) {
-              checked.push(39)
-            }
-            if (index === 7) {
-              checked.push(40)
-            }
-            if (index === 8) {
-              checked.push(41)
-            }
-          }
-        })
-      // 低位图：bit0-bit4 对应 B1-B5，仅保留列表内的频段
-      bandL
-        .toString(2)
-        .split('')
-        .reverse()
-        .forEach((item, index) => {
-          if (item === '1' && [1, 3, 5, 8].includes(index + 1)) {
-            checked.push(index + 1)
-          }
-        })
-      return checked
+      const bandH = parseInt(arr[3]) || 0
+      const bandL = parseInt(arr[4]) || 0
+      return [
+        ...decodeBandBitmap(bandH.toString(2), { baseBand: 33, allowed: this.list }),
+        ...decodeBandBitmap(bandL.toString(2), { baseBand: 1, allowed: this.list })
+      ]
+    },
+
+    // 校验并二次确认后写入 IMEI
+    writeImei() {
+      const imei = confirmWriteValue('imei', this.imei)
+      if (imei) {
+        this.sendCommand('AT*MRD_IMEI=W,0,01JAN1970,' + imei)
+      }
+    },
+
+    // 校验并二次确认后写入 SN
+    writeSn() {
+      const sn = confirmWriteValue('sn', this.sn)
+      if (sn) {
+        this.sendCommand('AT*MRD_SN=W,0,01JAN1970,' + sn)
+      }
+    },
+
+    // 校验并二次确认后写入 WiFi MAC
+    writeMac() {
+      const mac = confirmWriteValue('mac', this.mac)
+      if (mac) {
+        this.sendCommand('AT*MRD_WIFIID=W,0,01JAN1970,' + mac)
+      }
     },
 
     // 查询设备支持的频段位图
@@ -209,15 +195,15 @@ export default {
 
     // 将勾选的频段合成进当前位图并发送锁定命令（未查询到位图时使用全零基底）
     submit(selectedBands) {
-      let bandH = 0
-      let bandL = 0
-      selectedBands.forEach(item => {
-        if (item <= 20) {
-          bandL += Math.pow(2, item - 1)
-        }
-        if (item >= 38 && item <= 41) {
-          bandH += Math.pow(2, item - 33)
-        }
+      const bandH = encodeBandBitmap(selectedBands, {
+        baseBand: 33,
+        maxOffset: 8,
+        allowed: this.list
+      })
+      const bandL = encodeBandBitmap(selectedBands, {
+        baseBand: 1,
+        maxOffset: 19,
+        allowed: this.list
       })
       let bandArr = this.bandStr.split(',')
       if (bandArr.length < 5) {

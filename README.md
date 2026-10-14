@@ -76,7 +76,9 @@ src/
 │   └── SerialConsole.vue   # 串口控制台（命令输入 + 日志显示）
 ├── utils/
 │   ├── serial.js           # SerialPortManager 串口管理（连接/发送/后台读取循环）
-│   └── serialPortMixin.js  # 页面串口生命周期混入工厂
+│   ├── serialPortMixin.js  # 页面串口生命周期混入工厂（状态轮询/日志/按行解析）
+│   ├── band.js             # LTE 频段位图编解码（各平台频段读写共用）
+│   └── writeGuard.js       # 写号前的格式校验与二次确认
 ├── router/index.js         # 路由配置（hash 模式，404 重定向首页）
 ├── assets/fonts/           # 自托管字体与思源宋体子集声明
 ├── style.css               # Tailwind 入口，Claude 主题设计令牌与组件类
