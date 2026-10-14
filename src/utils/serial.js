@@ -67,7 +67,8 @@ export class SerialPortManager {
 
   /**
    * 关闭串口连接
-   * 先中止后台读取循环，再释放锁并关闭端口
+   * 先中止后台读取循环，再释放读写锁并关闭端口；
+   * 取消读取与释放锁的失败都不阻断关闭流程，避免端口被遗留在打开状态
    */
   async closePort() {
     if (!this.isOpen) {
@@ -77,13 +78,12 @@ export class SerialPortManager {
     try {
       if (this.readLoopAbort) {
         this.readLoopAbort.aborted = true
-        // 中断挂起的 read()，使读取循环尽快退出
-        await this.reader.cancel()
         this.readLoopAbort = null
+        // 中断挂起的 read()，使读取循环尽快退出
+        await this.cancelReader()
       }
-      if (this.writer) {
-        this.writer.releaseLock()
-      }
+      this.releaseReader()
+      this.releaseWriter()
       if (this.port) {
         await this.port.close()
       }
@@ -94,6 +94,51 @@ export class SerialPortManager {
       this.reader = null
       this.writer = null
       this.isOpen = false
+    }
+  }
+
+  /**
+   * 取消挂起的读取请求（失败仅记录，不阻断关闭流程）
+   */
+  async cancelReader() {
+    if (!this.reader) {
+      return
+    }
+
+    try {
+      await this.reader.cancel()
+    } catch (error) {
+      console.error('Error cancelling reader:', error)
+    }
+  }
+
+  /**
+   * 释放读取锁（读取请求尚未结算时可能抛错，不影响端口关闭）
+   */
+  releaseReader() {
+    if (!this.reader) {
+      return
+    }
+
+    try {
+      this.reader.releaseLock()
+    } catch (error) {
+      console.error('Error releasing reader:', error)
+    }
+  }
+
+  /**
+   * 释放写入锁（写入尚未结算时可能抛错，不影响端口关闭）
+   */
+  releaseWriter() {
+    if (!this.writer) {
+      return
+    }
+
+    try {
+      this.writer.releaseLock()
+    } catch (error) {
+      console.error('Error releasing writer:', error)
     }
   }
 
@@ -127,10 +172,13 @@ export class SerialPortManager {
     // 读取循环闭包：abort 标记置位或调用 cancel() 后退出
     const loop = async () => {
       const abort = this.readLoopAbort
+      // 标记循环是否因设备掉线或读取错误被动结束（区别于用户主动断开）
+      let interrupted = false
       while (abort && !abort.aborted && this.isOpen && this.reader) {
         try {
           const { value, done } = await this.reader.read()
           if (done) {
+            interrupted = true
             break
           }
           const data = this.uint8ArrayToString(value)
@@ -144,11 +192,16 @@ export class SerialPortManager {
           if (this.errorHandler) {
             this.errorHandler(error)
           }
+          interrupted = true
           break
         }
       }
       if (this.readLoopAbort === abort) {
         this.readLoopAbort = null
+      }
+      // 被动结束说明链路已不可用：关闭端口复位状态，避免界面一直停留在“已连接”
+      if (interrupted) {
+        this.closePort()
       }
     }
 
