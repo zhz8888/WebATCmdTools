@@ -1,0 +1,78 @@
+name: Deploy site to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      # The published site is the build output of the app itself, so every input
+      # that can change dist/ has to redeploy it. package.json and the lockfile
+      # are listed separately because a dependency bump rewrites the bundle
+      # without touching anything under src/.
+      - "src/**"
+      - "public/**"
+      - "index.html"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "vite.config.js"
+      - "eslint.config.js"
+      - "jsconfig.json"
+      - ".github/workflows/site-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: site-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          # Pinned to the toolchain the build is verified on. The package
+          # manager version comes from package.json#packageManager.
+          node-version: 24.21.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The same gate the repository runs locally, so a deploy can never
+      # publish a tree that fails lint or does not build.
+      - name: Lint
+        run: pnpm lint:check
+
+      # vite.config.js sets base: './', so the bundle resolves its assets
+      # relative to wherever Pages serves the repository from. No origin or
+      # base path has to be baked into the build.
+      - name: Build site
+        run: pnpm build
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

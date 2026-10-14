@@ -102,10 +102,12 @@ public/
 
 ## 部署
 
-推送到 `main` 分支（或手动触发 workflow）后，GitHub Actions 自动执行依赖安装、`lint:check` 代码检查与构建，随后将 `dist/` 同时发布到：
+推送到 `main` 分支（或手动触发 `Deploy site to GitHub Pages` workflow）后，GitHub Actions 执行依赖安装、`lint:check` 代码检查与构建，再通过官方 Pages 流程把 `dist/` 发布到 GitHub Pages：
 
-- 本仓库的 `gh-pages` 分支（GitHub Pages）
-- `smanx/app` 仓库 `master` 分支的 `atmaster/` 目录
+- 工作流文件：`.github/workflows/site-pages.yml`，仅当 `src/`、`public/`、构建配置等会影响产物的文件变化时触发
+- 站点地址：`https://<owner>.github.io/WebATCmdTools/`，部署 URL 也会显示在 workflow 运行页与仓库的 Deployments 中
+
+首次启用需要在仓库 `Settings → Pages` 把 Source 设为 **GitHub Actions**，此后无需任何密钥，也不需要维护 `gh-pages` 分支。
 
 ## 常见问题
 
