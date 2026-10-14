@@ -107,7 +107,11 @@ public/
 - 工作流文件：`.github/workflows/site-pages.yml`，仅当 `src/`、`public/`、构建配置等会影响产物的文件变化时触发
 - 站点地址：`https://<owner>.github.io/WebATCmdTools/`，部署 URL 也会显示在 workflow 运行页与仓库的 Deployments 中
 
-首次启用需要在仓库 `Settings → Pages` 把 Source 设为 **GitHub Actions**，此后无需任何密钥，也不需要维护 `gh-pages` 分支。
+首次启用需要在仓库 `Settings → Pages` 把 Source 设为 **GitHub Actions**，此后无需任何密钥，也不需要维护 `gh-pages` 分支。未启用时 workflow 会在 `Configure GitHub Pages` 步骤直接失败（`Get Pages site failed`），命令行启用方式：
+
+```bash
+gh api -X POST repos/<owner>/<repo>/pages -f build_type=workflow
+```
 
 ## 常见问题
 

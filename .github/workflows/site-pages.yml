@@ -54,6 +54,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Resolve the Pages site before spending time on lint and build: a
+      # repository that still has Pages disabled fails here in seconds instead
+      # of after a full install and build.
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
       # The same gate the repository runs locally, so a deploy can never
       # publish a tree that fails lint or does not build.
       - name: Lint
@@ -64,9 +70,6 @@ jobs:
       # base path has to be baked into the build.
       - name: Build site
         run: pnpm build
-
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v6
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
