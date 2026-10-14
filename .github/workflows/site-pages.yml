@@ -9,15 +9,15 @@ on:
       # that can change dist/ has to redeploy it. package.json and the lockfile
       # are listed separately because a dependency bump rewrites the bundle
       # without touching anything under src/.
-      - "src/**"
-      - "public/**"
-      - "index.html"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "vite.config.js"
-      - "eslint.config.js"
-      - "jsconfig.json"
-      - ".github/workflows/site-pages.yml"
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'vite.config.js'
+      - 'eslint.config.js'
+      - 'jsconfig.json'
+      - '.github/workflows/site-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -31,7 +31,9 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    # Pinned instead of ubuntu-latest: the label migrates to Ubuntu 26 on
+    # 2026-10-19, and the site build should not change environment silently.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment:
       name: github-pages
